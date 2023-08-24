@@ -95,7 +95,7 @@ func main() {
 		// fmt.Println(dataPermissionsListParsed.Users[0].Name)
 	}
 
-	file, err := os.Create("test.csv")
+	file, err := os.Create("contraho-data.csv")
 	if err != nil {
 		fmt.Println("Error creating CSV file:", err)
 		return
