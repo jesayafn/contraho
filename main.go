@@ -22,22 +22,24 @@ func main() {
 	indexPageNumber := indexPageNumberCounter(projectSearchPage)
 
 	var dataProjectSearch []ProjectSearchList
-	for i := 1; i <= indexPageNumber; i++ {
-		dataprojectSearchPageRaw := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=500&p="+strconv.Itoa(i), credential)
+	for pagesIndex := 1; pagesIndex <= indexPageNumber; pagesIndex++ {
+		dataprojectSearchPageRaw := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=500&p="+strconv.Itoa(pagesIndex),
+			credential)
 
 		var dataprojectSearchPageParsed ProjectSearchPage
 		_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
-		for i := range dataprojectSearchPageParsed.Components {
+		for projectsIndex := range dataprojectSearchPageParsed.Components {
 
-			lastAnalysisDate, err := time.Parse("2006-01-02T15:04:05-0700", dataprojectSearchPageParsed.Components[i].LastAnalysisDate)
+			lastAnalysisDate, err := time.Parse("2006-01-02T15:04:05-0700",
+				dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
 			// lastAnalysisDate := formatTime(lastAnalysisDateRaw)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
 			}
 			dataProjectSearch = append(dataProjectSearch, ProjectSearchList{
-				Key:              dataprojectSearchPageParsed.Components[i].Key,
-				Name:             dataprojectSearchPageParsed.Components[i].Name,
+				Key:              dataprojectSearchPageParsed.Components[projectsIndex].Key,
+				Name:             dataprojectSearchPageParsed.Components[projectsIndex].Name,
 				LastAnalysisDate: lastAnalysisDate,
 			})
 		}
@@ -49,7 +51,6 @@ func main() {
 
 		_ = dataParse(dataBranchesListRaw, &dataBranchesListParsed)
 
-		// fmt.Println(dataProjectSearch[i].Name, dataBranchesListParsed)
 		var compareLOC []int
 		for y := range dataBranchesListParsed.Branches {
 			dataMeasuresRaw := httpRequest(
