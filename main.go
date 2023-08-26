@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	host, username, password := arguments()
+	host, username, password, fileOutput := arguments()
 
 	credential := authorizationHeader(*username, *password)
 	data := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=1&p=1", credential)
@@ -24,9 +24,7 @@ func main() {
 	var dataProjectSearch []ProjectSearchList
 	for i := 1; i <= indexPageNumber; i++ {
 		dataprojectSearchPageRaw := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=500&p="+strconv.Itoa(i), credential)
-		// fmt.Println(i)
-		// fmt.Println(indexPageNumber)
-		// dataprojectSearchPageParsed := projectSearchParse(dataprojectSearchPageRaw)
+
 		var dataprojectSearchPageParsed ProjectSearchPage
 		_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
 		for i := range dataprojectSearchPageParsed.Components {
@@ -43,14 +41,6 @@ func main() {
 				LastAnalysisDate: lastAnalysisDate,
 			})
 		}
-		// fmt.Println(dataprojectSearchPageParsed.Components[i].LastAnalysisDate)
-		// fmt.Println(len(dataProjectSearch))
-
-		// fmt.Println(len(dataSearch))
-		// fmt.Println(dataSearch)
-
-		// respBody := bytes.NewBuffer(data).String()
-		// fmt.Println(data)
 	}
 
 	for i := range dataProjectSearch {
@@ -92,10 +82,8 @@ func main() {
 
 		dataProjectSearch[i].Owner = dataPermissionsListParsed.Users[0].Name
 		dataProjectSearch[i].Email = dataPermissionsListParsed.Users[0].Email
-		// fmt.Println(dataPermissionsListParsed.Users[0].Name)
 	}
-
-	file, err := os.Create("contraho-data.csv")
+	file, err := os.Create(*fileOutput)
 	if err != nil {
 		fmt.Println("Error creating CSV file:", err)
 		return
@@ -111,8 +99,6 @@ func main() {
 	writer.Write(header)
 
 	// Write the data rows
-
-	// fmt.Println(reflect.ValueOf(dataProjectSearch[0]).Kind())
 
 	for _, i := range dataProjectSearch {
 		row := getStructFieldValues(i)
