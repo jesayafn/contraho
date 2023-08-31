@@ -5,7 +5,15 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
+)
+
+var (
+	projectIndexApi           = "/api/projects/search?qualifiers=TRK&ps=1&p=1"
+	projectScrapeApi          = "/api/projects/search?qualifiers=TRK&ps=500&p="
+	timeParseFormat           = "2006-01-02T15:04:05-0700"
+	projectBranchesApi        = "/api/project_branches/list?project="
+	ProjectBranchesLocApi     = "/api/measures/component?metricKeys=ncloc&component="
+	ProjectUserPermissionsApi = "/api/permissions/users?projectKey="
 )
 
 func main() {
@@ -13,9 +21,8 @@ func main() {
 	host, username, password, fileOutput := arguments()
 
 	credential := authorizationHeader(*username, *password)
-	data := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=1&p=1", credential)
+	data := httpRequest(*host+projectIndexApi, credential)
 
-	// projectSearchPage := projectSearchParse(data)\
 	var projectSearchPage ProjectSearchPage
 	_ = dataParse(data, &projectSearchPage)
 
@@ -23,30 +30,30 @@ func main() {
 
 	var dataProjectSearch []ProjectSearchList
 	for pagesIndex := 1; pagesIndex <= indexPageNumber; pagesIndex++ {
-		dataprojectSearchPageRaw := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=500&p="+strconv.Itoa(pagesIndex),
+		dataprojectSearchPageRaw := httpRequest(*host+projectScrapeApi+strconv.Itoa(pagesIndex),
 			credential)
 
 		var dataprojectSearchPageParsed ProjectSearchPage
 		_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
 		for projectsIndex := range dataprojectSearchPageParsed.Components {
 
-			lastAnalysisDate, err := time.Parse("2006-01-02T15:04:05-0700",
-				dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
-			// lastAnalysisDate := formatTime(lastAnalysisDateRaw)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
-			}
+			// lastAnalysisDate, err := time.Parse(timeParseFormat,
+			// 	dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
+
+			// if err != nil {
+			// 	fmt.Println("Error:", err)
+			// 	return
+			// }
 			dataProjectSearch = append(dataProjectSearch, ProjectSearchList{
-				Key:              dataprojectSearchPageParsed.Components[projectsIndex].Key,
-				Name:             dataprojectSearchPageParsed.Components[projectsIndex].Name,
-				LastAnalysisDate: lastAnalysisDate,
+				Key:  dataprojectSearchPageParsed.Components[projectsIndex].Key,
+				Name: dataprojectSearchPageParsed.Components[projectsIndex].Name,
+				// LastAnalysisDate: lastAnalysisDate,
 			})
 		}
 	}
 
 	for i := range dataProjectSearch {
-		dataBranchesListRaw := httpRequest(*host+"/api/project_branches/list?project="+dataProjectSearch[i].Key, credential)
+		dataBranchesListRaw := httpRequest(*host+projectBranchesApi+dataProjectSearch[i].Key, credential)
 		var dataBranchesListParsed ProjectBranchesList
 
 		_ = dataParse(dataBranchesListRaw, &dataBranchesListParsed)
@@ -54,7 +61,7 @@ func main() {
 		var compareLOC []int
 		for y := range dataBranchesListParsed.Branches {
 			dataMeasuresRaw := httpRequest(
-				*host+"/api/measures/component?metricKeys=ncloc&component="+dataProjectSearch[i].Key+"&branch="+dataBranchesListParsed.Branches[y].Name,
+				*host+ProjectBranchesLocApi+dataProjectSearch[i].Key+"&branch="+dataBranchesListParsed.Branches[y].Name,
 				credential)
 
 			var dataMeasuresParsed ProjectMeasures
@@ -77,7 +84,7 @@ func main() {
 		dataProjectSearch[i].HighestBranch = dataBranchesListParsed.Branches[branchHighestLoc].Name
 		dataProjectSearch[i].Loc = strconv.Itoa(compareLOC[branchHighestLoc])
 
-		dataPermissionsListRaw := httpRequest(*host+"/api/permissions/users?projectKey="+dataProjectSearch[i].Key, credential)
+		dataPermissionsListRaw := httpRequest(*host+ProjectUserPermissionsApi+dataProjectSearch[i].Key, credential)
 		var dataPermissionsListParsed ProjectPermissions
 		_ = dataParse(dataPermissionsListRaw, &dataPermissionsListParsed)
 

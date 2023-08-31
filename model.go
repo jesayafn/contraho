@@ -23,6 +23,23 @@ type ProjectSearchPage struct {
 	} `json:"components"`
 }
 
+type ComponentSearchPage struct {
+	Paging struct {
+		PageSize int `json:"pageSize"`
+		Total    int `json:"total"`
+	} `json:"paging"`
+}
+type ComponentSearch struct {
+	Components []struct {
+		Key              string `json:"key"`
+		Name             string `json:"name"`
+		Qualifier        string `json:"qualifier"`
+		Visibility       string `json:"visibility"`
+		LastAnalysisDate string `json:"lastAnalysisDate"`
+		Revision         string `json:"revision"`
+	} `json:"components"`
+}
+
 type ProjectSearchList struct {
 	Key              string
 	Name             string
