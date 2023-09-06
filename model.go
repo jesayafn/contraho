@@ -123,3 +123,15 @@ type ProjectPermissions struct {
 		Avatar      string   `json:"avatar"`
 	} `json:"users"`
 }
+
+type ProjectSearchOfApplication struct {
+	Paging struct {
+		PageIndex int `json:"pageIndex"`
+		PageSize  int `json:"pageSize"`
+		Total     int `json:"total"`
+	} `json:"paging"`
+	Components []struct {
+		Key       string `json:"refKey"`
+		Qualifier string `json:"qualifier"`
+	} `json:"components"`
+}
