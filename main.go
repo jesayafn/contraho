@@ -41,41 +41,38 @@ func main() {
 func projectSearch() {
 	// This is project scrape
 	host, username, password, fileOutput := arguments()
-	fmt.Println(*host)
 
 	credential := authorizationHeader(*username, *password)
-	data := httpRequest(*host+projectIndexApi, credential)
 
-	var projectSearchPage ProjectSearchPage
-	_ = dataParse(data, &projectSearchPage)
+	lengthProject := projectLength(*host, credential)
 
-	indexPageNumber := indexPageNumberCounter(projectSearchPage)
+	projectList := listProject(*host, credential, lengthProject)
 
-	var dataProjectSearch []ProjectSearchList
-	for pagesIndex := 1; pagesIndex <= indexPageNumber; pagesIndex++ {
-		dataprojectSearchPageRaw := httpRequest(*host+projectScrapeApi+strconv.Itoa(pagesIndex),
-			credential)
+	// var dataProjectSearch []ProjectSearchList
+	// for pagesIndex := 1; pagesIndex <= lengthProject; pagesIndex++ {
+	// 	dataprojectSearchPageRaw := httpRequest(*host+projectScrapeApi+strconv.Itoa(pagesIndex),
+	// 		credential)
 
-		var dataprojectSearchPageParsed ProjectSearchPage
-		_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
-		for projectsIndex := range dataprojectSearchPageParsed.Components {
+	// 	var dataprojectSearchPageParsed ProjectSearchPage
+	// 	_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
+	// 	for projectsIndex := range dataprojectSearchPageParsed.Components {
 
-			// lastAnalysisDate, err := time.Parse(timeParseFormat,
-			// 	dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
+	// 		// lastAnalysisDate, err := time.Parse(timeParseFormat,
+	// 		// 	dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
 
-			// if err != nil {
-			// 	fmt.Println("Error:", err)
-			// 	return
-			// }
-			dataProjectSearch = append(dataProjectSearch, ProjectSearchList{
-				Key:  dataprojectSearchPageParsed.Components[projectsIndex].Key,
-				Name: dataprojectSearchPageParsed.Components[projectsIndex].Name,
-				// LastAnalysisDate: lastAnalysisDate,
-			})
-		}
-	}
+	// 		// if err != nil {
+	// 		// 	fmt.Println("Error:", err)
+	// 		// 	return
+	// 		// }
+	// 		dataProjectSearch = append(dataProjectSearch, ProjectSearchList{
+	// 			Key:  dataprojectSearchPageParsed.Components[projectsIndex].Key,
+	// 			Name: dataprojectSearchPageParsed.Components[projectsIndex].Name,
+	// 			// LastAnalysisDate: lastAnalysisDate,
+	// 		})
+	// 	}
+	// }
 
-	for i := range dataProjectSearch {
+	for i := range projectList {
 		dataBranchesListRaw := httpRequest(*host+projectBranchesApi+dataProjectSearch[i].Key, credential)
 		var dataBranchesListParsed ProjectBranchesList
 

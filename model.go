@@ -7,12 +7,14 @@ type HttpRequestProperties struct {
 	Params []string
 }
 
+type PagingProperties struct {
+	PageIndex int `json:"pageIndex"`
+	PageSize  int `json:"pageSize"`
+	Total     int `json:"total"`
+}
+
 type ProjectSearchPage struct {
-	Paging struct {
-		PageIndex int `json:"pageIndex"`
-		PageSize  int `json:"pageSize"`
-		Total     int `json:"total"`
-	} `json:"paging"`
+	Paging     PagingProperties `json:"paging"`
 	Components []struct {
 		Key              string `json:"key"`
 		Name             string `json:"name"`
@@ -125,11 +127,7 @@ type ProjectPermissions struct {
 }
 
 type ProjectSearchOfApplication struct {
-	Paging struct {
-		PageIndex int `json:"pageIndex"`
-		PageSize  int `json:"pageSize"`
-		Total     int `json:"total"`
-	} `json:"paging"`
+	Paging     PagingProperties `json:"paging"`
 	Components []struct {
 		Key       string `json:"refKey"`
 		Qualifier string `json:"qualifier"`
