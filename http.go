@@ -32,6 +32,7 @@ func httpRequest(url string, headerAuthValue string) (data []byte) {
 		fmt.Println("Error reading HTTP response body:", err)
 		return
 	}
+	// fmt.Println(string(data))
 
 	// data = string(body)
 	// fmt.Println(resp.StatusCode)

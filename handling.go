@@ -3,11 +3,22 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"time"
 )
 
 var (
 	pageSize = 500
 )
+
+// Define a function to apply branch detail to the project list
+func applyBranchDetail(pl []ProjectSearchList, host, credential string) []ProjectSearchList {
+	return branchDetailOfProjects(host, credential, pl)
+}
+
+// Define a function to apply owner information to the project list
+func applyOwnerInformation(pl []ProjectSearchList, host, credential string) []ProjectSearchList {
+	return ownerProject(host, credential, pl)
+}
 
 func indexPageNumberCounter(getProjectSearchPage interface{}) int {
 	switch page := getProjectSearchPage.(type) {
@@ -59,24 +70,32 @@ func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSear
 
 func projectLength(host string, credential string) int {
 	data := httpRequest(host+projectIndexApi, credential)
+	// fmt.Println(string(data))
 	var projectSearchPage ProjectSearchPage
-	err := dataParse(data, projectSearchPage)
+	err := dataParse(data, &projectSearchPage)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	// fmt.Println(projectSearchPage)
 	indexPageNumber := indexPageNumberCounter(projectSearchPage)
 
 	return indexPageNumber
 }
 
 func listProject(host string, credential string, lengthProject int) []ProjectSearchList {
+	// fmt.Println("list start")
 	var projectList []ProjectSearchList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
 		raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
 			credential)
+		// raw := httpRequest(host+projectIndexApi, credential)
+		// fmt.Println(raw)
+
 		var structured ProjectSearchPage
 
 		err := dataParse(raw, &structured)
+		// fmt.Println(structured)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -88,19 +107,125 @@ func listProject(host string, credential string, lengthProject int) []ProjectSea
 			})
 		}
 	}
-
+	// fmt.Println("list end")
 	return projectList
-}
 
-func branchDetailOfProjects(host string, credential string, projectList []ProjectSearchList) {
+}
+func findIndexOfLatestDate(dateStrings []string) (int, error) {
+	// Common layout for parsing date strings.
+	layout := "2006-01-02T15:04:05-0700"
+
+	// Initialize variables to keep track of the latest date and its index.
+	var latestDateIndex int
+	var latestDate time.Time
+
+	for i, dateStr := range dateStrings {
+		parsedDate, err := time.Parse(layout, dateStr)
+		if err != nil {
+			return -1, err // Return -1 for index and the error.
+		}
+
+		// If it's the first valid date or later than the current latestDate, update latestDate and its index.
+		if i == 0 || parsedDate.After(latestDate) {
+			latestDate = parsedDate
+			latestDateIndex = i
+		}
+	}
+
+	return latestDateIndex, nil
+}
+func branchDetailOfProjects(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
+	// fmt.Println("Gather Branch Detail")
+
 	for index := range projectList {
 		raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
 		var structured ProjectBranchesList
 		err := dataParse(raw, &structured)
 
-		if err != nil {
-			fmt.Println(err)
-		}
+		handleErr(err)
+		var (
+			compareNloc     []int
+			loc             int
+			lastDate        string
+			compareLastDate []string
+		)
+		for branchIndex := range structured.Branches {
+			nlocRaw := httpRequest(
+				host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+				credential)
 
+			var nlocStructured ProjectMeasures
+
+			err := dataParse(nlocRaw, &nlocStructured)
+			handleErr(err)
+
+			if len(nlocStructured.Component.Measures) == 0 {
+				loc = 0
+			} else {
+				loc, err = strconv.Atoi(nlocStructured.Component.Measures[0].Value)
+				handleErr(err)
+			}
+			compareNloc = append(compareNloc, loc)
+
+			lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+				credential)
+
+			var lastDateStructured ProjectAnalyses
+			err = dataParse(lastDateRaw, &lastDateStructured)
+			handleErr(err)
+
+			if len(lastDateStructured.Analyses) == 0 {
+				lastDate = "0001-01-01T00:00:00+0000"
+			} else {
+				lastDate = lastDateStructured.Analyses[0].Date
+			}
+
+			compareLastDate = append(compareLastDate, lastDate)
+		}
+		// fmt.Println(projectList[index].Key, compareLastDate)
+		branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
+		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
+		handleErr(err)
+		// projectList[index] = ProjectSearchList{
+		// 	HighestBranch:      structured.Branches[branchCalculatedNloc].Name,
+		// 	Loc:                strconv.Itoa(compareNloc[branchCalculatedNloc]),
+		// 	LastAnalysisDate:   compareLastDate[lastAnalysisDate],
+		// 	LastAnalysisBranch: structured.Branches[lastAnalysisDate].Name,
+		// }
+		projectList[index].HighestLinesOfCodeBranch = structured.Branches[branchCalculatedNloc].Name
+		projectList[index].LinesOfCode = strconv.Itoa(compareNloc[branchCalculatedNloc])
+		projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
+		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
+
+	}
+
+	return projectList
+}
+
+func ownerProject(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
+	// fmt.Println("Owner func")
+
+	for index := range projectList {
+		raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
+		var structured ProjectPermissions
+
+		err := dataParse(raw, &structured)
+		// fmt.Println(structured)
+		handleErr(err)
+
+		// projectList[index] = ProjectSearchList{
+		// 	Owner: structured.Users[0].Name,
+		// 	Email: structured.Users[0].Email,
+		// }
+		projectList[index].Owner = structured.Users[0].Name
+		projectList[index].Email = structured.Users[0].Email
+
+	}
+
+	return projectList
+}
+func handleErr(err error) {
+	if err != nil {
+		fmt.Println(err)
 	}
 }

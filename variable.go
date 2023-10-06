@@ -1,6 +1,6 @@
 package main
 
-var (
+const (
 	projectIndexApi           = "/api/projects/search?qualifiers=TRK&ps=1&p=1"
 	projectScrapeApi          = "/api/projects/search?qualifiers=TRK&ps=500&p="
 	aplIndexApi               = "/api/projects/search?qualifiers=APP&ps=1&p=1"
@@ -11,4 +11,5 @@ var (
 	projectBranchesApi        = "/api/project_branches/list?project="
 	ProjectBranchesLocApi     = "/api/measures/component?metricKeys=ncloc&component="
 	ProjectUserPermissionsApi = "/api/permissions/users?projectKey="
+	ProjectDateAnalysisApi    = "/api/project_analyses/search?ps=1&p=1&project="
 )
