@@ -84,12 +84,11 @@ func projectLength(host string, credential string) int {
 }
 
 func listProject(host string, credential string, lengthProject int) []ProjectSearchList {
-	// fmt.Println("list start")
+	dispayJob("list project", "start")
 	var projectList []ProjectSearchList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
 		raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
 			credential)
-		// raw := httpRequest(host+projectIndexApi, credential)
 		// fmt.Println(raw)
 
 		var structured ProjectSearchPage
@@ -107,7 +106,7 @@ func listProject(host string, credential string, lengthProject int) []ProjectSea
 			})
 		}
 	}
-	// fmt.Println("list end")
+	dispayJob("list project", "end")
 	return projectList
 
 }
@@ -136,6 +135,7 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 }
 func branchDetailOfProjects(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
 	// fmt.Println("Gather Branch Detail")
+	dispayJob("obtain branch data", "start")
 
 	for index := range projectList {
 		raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
@@ -198,12 +198,14 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
 
 	}
+	dispayJob("obtain branch data", "end")
 
 	return projectList
 }
 
 func ownerProject(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
 	// fmt.Println("Owner func")
+	dispayJob("obtain project owner", "start")
 
 	for index := range projectList {
 		raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
@@ -221,7 +223,7 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 		projectList[index].Email = structured.Users[0].Email
 
 	}
-
+	dispayJob("obtain project owner", "end")
 	return projectList
 }
 func handleErr(err error) {
