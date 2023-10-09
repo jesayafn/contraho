@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"os"
 	"reflect"
 	"strconv"
 )
 
 func arguments() (host *string, username *string, password *string, fileOutput *string) {
-	host = flag.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
-	username = flag.String("username", "admin", "Username will be used for authentication to Sonarqube server")
-	password = flag.String("password", "admin", "Password will be used for authentication to Sonarqube server")
-	fileOutput = flag.String("filename", "contraho.csv", "CSV filename will be used for CSV output file")
-	flag.Parse()
+	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
+	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
+	username = flagSet.String("username", "admin", "Username will be used for authentication to Sonarqube server")
+	password = flagSet.String("password", "admin", "Password will be used for authentication to Sonarqube server")
+	fileOutput = flagSet.String("filename", "contraho.csv", "CSV filename will be used for CSV output file")
+	// flag.Parse()
+	flagSet.Parse(os.Args[2:])
 	return host, username, password, fileOutput
 
 }

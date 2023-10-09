@@ -4,85 +4,110 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
-	"strconv"
-	"time"
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: contraho <subcommand> [options]")
+		os.Exit(1)
+	}
 
+	subcommand := os.Args[1]
+
+	switch subcommand {
+	case "project":
+		projectSearch()
+	default:
+		fmt.Println("Invalid subcommand:", subcommand)
+		os.Exit(1)
+	}
+}
+
+func projectSearch() {
+	// This is project scrape
 	host, username, password, fileOutput := arguments()
 
 	credential := authorizationHeader(*username, *password)
-	data := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=1&p=1", credential)
 
-	// projectSearchPage := projectSearchParse(data)\
-	var projectSearchPage ProjectSearchPage
-	_ = dataParse(data, &projectSearchPage)
+	lengthProject := projectLength(*host, credential)
 
-	indexPageNumber := indexPageNumberCounter(projectSearchPage)
+	// fmt.Println(lengthProject)
+	projectList := applyOwnerInformation(
+		applyBranchDetail(
+			listProject(*host, credential, lengthProject),
+			*host, credential,
+		),
+		*host, credential,
+	)
+	// // This is Application Scrape
 
-	var dataProjectSearch []ProjectSearchList
-	for i := 1; i <= indexPageNumber; i++ {
-		dataprojectSearchPageRaw := httpRequest(*host+"/api/projects/search?qualifiers=TRK&ps=500&p="+strconv.Itoa(i), credential)
+	// // host, username, password, fileOutput := arguments()
 
-		var dataprojectSearchPageParsed ProjectSearchPage
-		_ = dataParse(dataprojectSearchPageRaw, &dataprojectSearchPageParsed)
-		for i := range dataprojectSearchPageParsed.Components {
+	// // credential := authorizationHeader(*username, *password)
+	// dataApl := httpRequest(*host+aplIndexApi, credential)
 
-			lastAnalysisDate, err := time.Parse("2006-01-02T15:04:05-0700", dataprojectSearchPageParsed.Components[i].LastAnalysisDate)
-			// lastAnalysisDate := formatTime(lastAnalysisDateRaw)
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
-			}
-			dataProjectSearch = append(dataProjectSearch, ProjectSearchList{
-				Key:              dataprojectSearchPageParsed.Components[i].Key,
-				Name:             dataprojectSearchPageParsed.Components[i].Name,
-				LastAnalysisDate: lastAnalysisDate,
-			})
-		}
-	}
+	// var aplSearchPage ProjectSearchPage
+	// _ = dataParse(dataApl, &aplSearchPage)
 
-	for i := range dataProjectSearch {
-		dataBranchesListRaw := httpRequest(*host+"/api/project_branches/list?project="+dataProjectSearch[i].Key, credential)
-		var dataBranchesListParsed ProjectBranchesList
+	// aplIndexPageNumber := indexPageNumberCounter(aplSearchPage)
+	// var dataAplSearch []string
+	// for pagesIndex := 1; pagesIndex <= aplIndexPageNumber; pagesIndex++ {
+	// 	dataAplSearchPageRaw := httpRequest(*host+apltScrapeApi+strconv.Itoa(pagesIndex),
+	// 		credential)
 
-		_ = dataParse(dataBranchesListRaw, &dataBranchesListParsed)
+	// 	var dataAplSearchPageParsed ProjectSearchPage
+	// 	_ = dataParse(dataAplSearchPageRaw, &dataAplSearchPageParsed)
+	// 	for aplIndex := range dataAplSearchPageParsed.Components {
 
-		// fmt.Println(dataProjectSearch[i].Name, dataBranchesListParsed)
-		var compareLOC []int
-		for y := range dataBranchesListParsed.Branches {
-			dataMeasuresRaw := httpRequest(
-				*host+"/api/measures/component?metricKeys=ncloc&component="+dataProjectSearch[i].Key+"&branch="+dataBranchesListParsed.Branches[y].Name,
-				credential)
+	// 		// lastAnalysisDate, err := time.Parse(timeParseFormat,
+	// 		// 	dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
 
-			var dataMeasuresParsed ProjectMeasures
-			_ = dataParse(dataMeasuresRaw, &dataMeasuresParsed)
+	// 		// if err != nil {
+	// 		// 	fmt.Println("Error:", err)
+	// 		// 	return
+	// 		// }
+	// 		dataAplSearch = append(dataAplSearch,
+	// 			dataAplSearchPageParsed.Components[aplIndex].Key)
+	// 		// fmt.Println(dataAplSearchPageParsed.Components[aplIndex].Key)
+	// 	}
+	// }
 
-			var stringifyLoc int
+	// fmt.Println("Finish Applications Listing")
+	// fmt.Println(dataAplSearch)
 
-			if len(dataMeasuresParsed.Component.Measures) == 0 {
-				stringifyLoc = 0
-			} else {
-				stringifyLoc, _ = strconv.Atoi(dataMeasuresParsed.Component.Measures[0].Value)
-			}
+	// var projectKeyListedApl []string
+	// for aplKey := range dataAplSearch {
+	// 	dataProjApl := httpRequest(*host+projectIndexAplApi+"&component="+dataAplSearch[aplKey], credential)
+	// 	var projAplSearch ProjectSearchOfApplication
+	// 	_ = dataParse(dataProjApl, &projAplSearch)
+	// 	fmt.Println("On" + dataAplSearch[aplKey] + "application")
+	// 	projAplIndexPageNumber := indexPageNumberCounter(projAplSearch)
+	// 	fmt.Println(projAplIndexPageNumber, dataAplSearch[aplKey])
+	// 	for pagesIndex := 1; pagesIndex <= projAplIndexPageNumber; pagesIndex++ {
+	// 		fmt.Println("Paging" + dataAplSearch[aplKey])
+	// 		dataProjAplSearchPageRaw := httpRequest(*host+projectScrapeAplApi+strconv.Itoa(pagesIndex)+"&component="+dataAplSearch[aplKey],
+	// 			credential)
 
-			compareLOC = append(compareLOC, stringifyLoc)
+	// 		var dataProjAplSearchPageParsed ProjectSearchOfApplication
+	// 		_ = dataParse(dataProjAplSearchPageRaw, &dataProjAplSearchPageParsed)
+	// 		for aplIndex := range dataProjAplSearchPageParsed.Components {
 
-		}
+	// 			// lastAnalysisDate, err := time.Parse(timeParseFormat,
+	// 			// 	dataprojectSearchPageParsed.Components[projectsIndex].LastAnalysisDate)
 
-		branchHighestLoc := findIndexOfHighestValue(compareLOC)
+	// 			// if err != nil {
+	// 			// 	fmt.Println("Error:", err)
+	// 			// 	return
+	// 			// }
+	// 			projectKeyListedApl = append(projectKeyListedApl, dataProjAplSearchPageParsed.Components[aplIndex].Key)
+	// 		}
+	// 	}
+	// }
+	// fmt.Println("Finish Project Key List")
+	// fmt.Println(projectKeyListedApl)
+	// dataProjectSearchUpdate := removeByKeys(dataProjectSearch, projectKeyListedApl)
+	// fmt.Println(len(dataProjectSearchUpdate))
 
-		dataProjectSearch[i].HighestBranch = dataBranchesListParsed.Branches[branchHighestLoc].Name
-		dataProjectSearch[i].Loc = strconv.Itoa(compareLOC[branchHighestLoc])
-
-		dataPermissionsListRaw := httpRequest(*host+"/api/permissions/users?projectKey="+dataProjectSearch[i].Key, credential)
-		var dataPermissionsListParsed ProjectPermissions
-		_ = dataParse(dataPermissionsListRaw, &dataPermissionsListParsed)
-
-		dataProjectSearch[i].Owner = dataPermissionsListParsed.Users[0].Name
-		dataProjectSearch[i].Email = dataPermissionsListParsed.Users[0].Email
-	}
 	file, err := os.Create(*fileOutput)
 	if err != nil {
 		fmt.Println("Error creating CSV file:", err)
@@ -95,12 +120,12 @@ func main() {
 	defer writer.Flush()
 
 	// Write the CSV header (field names)
-	header := getStructFieldNames(dataProjectSearch[0])
+	header := getStructFieldNames(projectList[0])
 	writer.Write(header)
 
 	// Write the data rows
 
-	for _, i := range dataProjectSearch {
+	for _, i := range projectList {
 		row := getStructFieldValues(i)
 		writer.Write(row)
 	}

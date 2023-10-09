@@ -1,18 +1,35 @@
 package main
 
-import "time"
-
 type HttpRequestProperties struct {
 	Path   string
 	Params []string
 }
 
+type PagingProperties struct {
+	PageIndex int `json:"pageIndex"`
+	PageSize  int `json:"pageSize"`
+	Total     int `json:"total"`
+}
+
 type ProjectSearchPage struct {
+	Paging     PagingProperties `json:"paging"`
+	Components []struct {
+		Key              string `json:"key"`
+		Name             string `json:"name"`
+		Qualifier        string `json:"qualifier"`
+		Visibility       string `json:"visibility"`
+		LastAnalysisDate string `json:"lastAnalysisDate"`
+		Revision         string `json:"revision"`
+	} `json:"components"`
+}
+
+type ComponentSearchPage struct {
 	Paging struct {
-		PageIndex int `json:"pageIndex"`
-		PageSize  int `json:"pageSize"`
-		Total     int `json:"total"`
+		PageSize int `json:"pageSize"`
+		Total    int `json:"total"`
 	} `json:"paging"`
+}
+type ComponentSearch struct {
 	Components []struct {
 		Key              string `json:"key"`
 		Name             string `json:"name"`
@@ -24,13 +41,14 @@ type ProjectSearchPage struct {
 }
 
 type ProjectSearchList struct {
-	Key              string
-	Name             string
-	HighestBranch    string
-	Loc              string
-	Owner            string
-	Email            string
-	LastAnalysisDate time.Time
+	Key                      string
+	Name                     string
+	HighestLinesOfCodeBranch string
+	LinesOfCode              string
+	Owner                    string
+	Email                    string
+	LastAnalysisBranch       string
+	LastAnalysisDate         string
 	// Qualifier        string
 	// Visibility       string
 	// LastAnalysisDate string
@@ -93,16 +111,38 @@ const (
 )
 
 type ProjectPermissions struct {
-	Paging struct {
-		PageIndex int `json:"pageIndex"`
-		PageSize  int `json:"pageSize"`
-		Total     int `json:"total"`
-	} `json:"paging"`
-	Users []struct {
+	Paging PagingProperties `json:"paging"`
+	Users  []struct {
 		Login       string   `json:"login"`
 		Name        string   `json:"name"`
 		Email       string   `json:"email"`
 		Permissions []string `json:"permissions"`
 		Avatar      string   `json:"avatar"`
 	} `json:"users"`
+}
+
+type ProjectSearchOfApplication struct {
+	Paging     PagingProperties `json:"paging"`
+	Components []struct {
+		Key       string `json:"refKey"`
+		Qualifier string `json:"qualifier"`
+	} `json:"components"`
+}
+
+type ProjectAnalyses struct {
+	Paging   PagingProperties `json:"paging"`
+	Analyses []struct {
+		Key                         string `json:"key"`
+		Date                        string `json:"date"`
+		ProjectVersion              string `json:"projectVersion"`
+		BuildString                 string `json:"buildString"`
+		Revision                    string `json:"revision,omitempty"`
+		ManualNewCodePeriodBaseline bool   `json:"manualNewCodePeriodBaseline"`
+		Events                      []struct {
+			Key      string `json:"key"`
+			Category string `json:"category"`
+			Name     string `json:"name"`
+		} `json:"events"`
+		DetectedCI string `json:"detectedCI,omitempty"`
+	} `json:"analyses"`
 }
