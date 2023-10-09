@@ -8,7 +8,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: myapp <subcommand> [options]")
+		fmt.Println("Usage: contraho <subcommand> [options]")
 		os.Exit(1)
 	}
 

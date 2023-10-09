@@ -133,6 +133,7 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 
 	return latestDateIndex, nil
 }
+
 func branchDetailOfProjects(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
 	// fmt.Println("Gather Branch Detail")
 	dispayJob("obtain branch data", "start")
