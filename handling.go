@@ -69,7 +69,8 @@ func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSear
 }
 
 func projectLength(host string, credential string) int {
-	data := httpRequest(host+projectIndexApi, credential)
+	// data := httpRequest(host+projectIndexApi, credential)
+	data := projectSearchApi(host, "TRK", 1, 1, credential)
 	// fmt.Println(string(data))
 	var projectSearchPage ProjectSearchPage
 	err := dataParse(data, &projectSearchPage)
@@ -87,9 +88,9 @@ func listProject(host string, credential string, lengthProject int) []ProjectSea
 	dispayJob("list project", "start")
 	var projectList []ProjectSearchList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
-		raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
-			credential)
-		// fmt.Println(raw)
+		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
+		// 	credential)
+		raw := projectSearchApi(host, "TRK", 500, pageIndex, credential)
 
 		var structured ProjectSearchPage
 
@@ -139,7 +140,8 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 	dispayJob("obtain branch data", "start")
 
 	for index := range projectList {
-		raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := projectBranchesListApi(host, projectList[index].Key, credential)
 		var structured ProjectBranchesList
 		err := dataParse(raw, &structured)
 
@@ -151,9 +153,11 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 			compareLastDate []string
 		)
 		for branchIndex := range structured.Branches {
-			nlocRaw := httpRequest(
-				host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-				credential)
+			// nlocRaw := httpRequest(
+			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			nlocRaw := measuresComponentApi(host, projectList[index].Key,
+				structured.Branches[branchIndex].Name, "nloc", credential)
 
 			var nlocStructured ProjectMeasures
 
@@ -168,8 +172,10 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 			}
 			compareNloc = append(compareNloc, loc)
 
-			lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-				credential)
+			// lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
+				structured.Branches[branchIndex].Name, credential)
 
 			var lastDateStructured ProjectAnalyses
 			err = dataParse(lastDateRaw, &lastDateStructured)
@@ -209,7 +215,8 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 	dispayJob("obtain project owner", "start")
 
 	for index := range projectList {
-		raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
+		// raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
+		raw := permissionUsersApi(host, projectList[index].Key, credential)
 		var structured ProjectPermissions
 
 		err := dataParse(raw, &structured)
