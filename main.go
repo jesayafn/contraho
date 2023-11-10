@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/csv"
 	"fmt"
 	"os"
 )
@@ -24,43 +23,53 @@ func main() {
 }
 
 func projectSearch() {
-	// This is project scrape
-	host, username, password, fileOutput := arguments()
+	host, username, password, fileOutput, otheroptions := arguments("project")
 
 	credential := authorizationHeader(*username, *password)
 
-	lengthProject := projectLength(*host, credential)
+	if unlistedApp, ok := otheroptions["unlistedApp"].(bool); ok {
 
-	// fmt.Println(lengthProject)
-	projectList := applyOwnerInformation(
-		applyBranchDetail(
-			listProject(*host, credential, lengthProject),
-			*host, credential,
-		),
-		*host, credential,
-	)
+		if unlistedApp {
 
-	file, err := os.Create(*fileOutput)
-	if err != nil {
-		fmt.Println("Error creating CSV file:", err)
-		return
+			lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+
+			// fmt.Println(lengthProject)
+			projectList := listProject(*host, credential, lengthProjectPage)
+
+			lengthAppPage := projectSearchApiLength(*host, credential, "APP")
+
+			applicationList := listApp(*host, credential, lengthAppPage)
+			var lisedProjectOnApp []string
+			for i := range applicationList {
+				lengthProjectOfAppPage := applicationProjectSearchApiLength(*host, applicationList[i], credential)
+				// fmt.Println(lengthProjectOfAppPage)
+				lisedProjectOnApp = listProjectofApplication(*host, lisedProjectOnApp, applicationList[i],
+					lengthProjectOfAppPage, credential)
+				fmt.Println(lisedProjectOnApp)
+			}
+
+			lisedProjectOnApp = removeRedundantValues(lisedProjectOnApp)
+
+			// fmt.Println(lisedProjectOnApp)
+
+			projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
+
+			// fmt.Println(projectList)
+
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+
+			// fmt.Println(lengthProject)
+			projectList := applyOwnerInformation(
+				applyBranchDetail(
+					listProject(*host, credential, lengthProjectPage),
+					*host, credential,
+				),
+				*host, credential,
+			)
+
+			createCSVFile(*fileOutput, projectList)
+		}
 	}
-	defer file.Close()
-
-	// Create a CSV writer
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Write the CSV header (field names)
-	header := getStructFieldNames(projectList[0])
-	writer.Write(header)
-
-	// Write the data rows
-
-	for _, i := range projectList {
-		row := getStructFieldValues(i)
-		writer.Write(row)
-	}
-
-	fmt.Println("CSV file generated successfully!")
 }

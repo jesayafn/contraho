@@ -121,12 +121,15 @@ type ProjectPermissions struct {
 	} `json:"users"`
 }
 
-type ProjectSearchOfApplication struct {
-	Paging     PagingProperties `json:"paging"`
-	Components []struct {
-		Key       string `json:"refKey"`
-		Qualifier string `json:"qualifier"`
-	} `json:"components"`
+type ProjectSearchOfApplicationPage struct {
+	Paging   PagingProperties `json:"paging"`
+	Projects []struct {
+		Key        string `json:"key"`
+		Name       string `json:"name"`
+		Enabled    bool   `json:"enabled"`
+		Selected   bool   `json:"selected"`
+		Accessible bool   `json:"accessible"`
+	} `json:"projects"`
 }
 
 type ProjectAnalyses struct {

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var (
+const (
 	pageSize = 500
 )
 
@@ -31,7 +31,7 @@ func indexPageNumberCounter(getProjectSearchPage interface{}) int {
 			pages = 1
 		}
 		return pages
-	case ProjectSearchOfApplication:
+	case ProjectSearchOfApplicationPage:
 		pages := page.Paging.Total / pageSize
 		if page.Paging.Total%pageSize > 0 {
 			pages++
@@ -43,7 +43,14 @@ func indexPageNumberCounter(getProjectSearchPage interface{}) int {
 	default:
 		return 0
 	}
-
+	// pages := getProjectSearchPage.Paging.Total / pageSize
+	// if getProjectSearchPage.Paging.Total%pageSize > 0 {
+	// 	pages++
+	// }
+	// if pages < 1 {
+	// 	pages = 1
+	// }
+	// return pages
 }
 
 func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSearchList {
@@ -68,9 +75,12 @@ func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSear
 	return updatedList
 }
 
-func projectLength(host string, credential string) int {
+func projectSearchApiLength(host string, credential string, projectType string) int {
 	// data := httpRequest(host+projectIndexApi, credential)
-	data := projectSearchApi(host, "TRK", 1, 1, credential)
+	// var data []byte
+
+	data := projectSearchApi(host, projectType, 1, 1, credential)
+
 	// fmt.Println(string(data))
 	var projectSearchPage ProjectSearchPage
 	err := dataParse(data, &projectSearchPage)
@@ -238,4 +248,71 @@ func handleErr(err error) {
 	if err != nil {
 		fmt.Println(err)
 	}
+}
+
+// Just hold array of the project key of application
+func listApp(host string, credential string, lengthProject int) []string {
+	dispayJob("list project", "start")
+	var applicationList []string
+	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
+		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
+		// 	credential)
+		raw := projectSearchApi(host, "APP", 500, pageIndex, credential)
+
+		var structured ProjectSearchPage
+
+		err := dataParse(raw, &structured)
+		// fmt.Println(structured)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		for projectIndex := range structured.Components {
+			applicationList = append(applicationList, structured.Components[projectIndex].Key)
+		}
+	}
+	dispayJob("list project", "end")
+	return applicationList
+
+}
+
+func applicationProjectSearchApiLength(host string, applicationKey string, credential string) int {
+	// data := httpRequest(host+projectIndexApi, credential)
+	// var data []byte
+
+	data := applicationsSearchApi(host, 1, 1, applicationKey, credential)
+
+	// fmt.Println(string(data))
+	var ProjectSearchOfApplicationPage ProjectSearchOfApplicationPage
+	err := dataParse(data, &ProjectSearchOfApplicationPage)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// fmt.Println(projectSearchPage)
+	indexPageNumber := indexPageNumberCounter(ProjectSearchOfApplicationPage)
+
+	return indexPageNumber
+}
+
+func listProjectofApplication(host string, projectListed []string, applicationKey string, lengthPage int, credential string) []string {
+	// var projectListed []string
+
+	for pageIndex := 1; pageIndex <= lengthPage; pageIndex++ {
+		data := applicationsSearchApi(host, 500, pageIndex, applicationKey, credential)
+
+		var projectSearchOfApplicationPage ProjectSearchOfApplicationPage
+		err := dataParse(data, &projectSearchOfApplicationPage)
+
+		// fmt.Println(projectSearchOfApplicationPage)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		for _, project := range projectSearchOfApplicationPage.Projects {
+			projectListed = append(projectListed, project.Key)
+		}
+	}
+	return projectListed
+
 }

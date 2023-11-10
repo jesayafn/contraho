@@ -120,3 +120,19 @@ func permissionUsersApi(host string, projectKey string, authToken string) (data 
 	return data
 
 }
+
+func applicationsSearchApi(host string, size int, pageNumber int, applicationKey string, authToken string) (data []byte) {
+	const (
+		applicationsSearch = "/api/applications/search_projects"
+	)
+	queryParams := url.Values{}
+	queryParams.Add("application", applicationKey)
+	queryParams.Add("ps", fmt.Sprintf("%d", size))
+	queryParams.Add("p", fmt.Sprintf("%d", pageNumber))
+	encodedQuery := queryParams.Encode()
+	fullPath := host + applicationsSearch + "?" + encodedQuery
+	// fmt.Println(fullPath)
+	data = httpRequest(fullPath, authToken)
+	return data
+
+}
