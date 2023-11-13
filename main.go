@@ -27,49 +27,45 @@ func projectSearch() {
 
 	credential := authorizationHeader(*username, *password)
 
-	if unlistedApp, ok := otheroptions["unlistedApp"].(bool); ok {
+	switch {
+	case otheroptions["unlistedApp"] == true:
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
-		if unlistedApp {
-
-			lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
-
-			// fmt.Println(lengthProject)
-			projectList := listProject(*host, credential, lengthProjectPage)
-
-			lengthAppPage := projectSearchApiLength(*host, credential, "APP")
-
-			applicationList := listApp(*host, credential, lengthAppPage)
-			var lisedProjectOnApp []string
-			for i := range applicationList {
-				lengthProjectOfAppPage := applicationProjectSearchApiLength(*host, applicationList[i], credential)
-				// fmt.Println(lengthProjectOfAppPage)
-				lisedProjectOnApp = listProjectofApplication(*host, lisedProjectOnApp, applicationList[i],
-					lengthProjectOfAppPage, credential)
-				fmt.Println(lisedProjectOnApp)
-			}
-
-			lisedProjectOnApp = removeRedundantValues(lisedProjectOnApp)
-
-			// fmt.Println(lisedProjectOnApp)
-
-			projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
-
-			// fmt.Println(projectList)
-
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
-
-			// fmt.Println(lengthProject)
-			projectList := applyOwnerInformation(
+		projectList := applyOwnerInformation(
+			projectFiltering(
 				applyBranchDetail(
 					listProject(*host, credential, lengthProjectPage),
-					*host, credential,
-				),
-				*host, credential,
-			)
+					*host, credential),
+				*host, credential, 0),
+			*host, credential,
+		)
 
-			createCSVFile(*fileOutput, projectList)
-		}
+		createCSVFile(*fileOutput, projectList)
+	case otheroptions["listedApp"] == true:
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+
+		projectList := applyOwnerInformation(
+			projectFiltering(
+				applyBranchDetail(
+					listProject(*host, credential, lengthProjectPage),
+					*host, credential),
+				*host, credential, 1),
+			*host, credential,
+		)
+		createCSVFile(*fileOutput, projectList)
+	default:
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+
+		// fmt.Println(lengthProject)
+		projectList := applyOwnerInformation(
+			applyBranchDetail(
+				listProject(*host, credential, lengthProjectPage),
+				*host, credential,
+			),
+			*host, credential,
+		)
+
+		createCSVFile(*fileOutput, projectList)
 	}
+
 }

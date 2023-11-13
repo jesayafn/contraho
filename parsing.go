@@ -26,9 +26,15 @@ func arguments(subcommand string) (host *string, username *string, password *str
 	case "project":
 
 		unlistedApp := flagSet.Bool("unlisted-on-app", false, "This is UOA option")
+		listedApp := flagSet.Bool("listed-on-app", false, "This is LOA option")
 		flagSet.Parse(os.Args[2:])
 
+		if *unlistedApp && *listedApp {
+			fmt.Println("Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.")
+			os.Exit(1)
+		}
 		additionalOptions["unlistedApp"] = *unlistedApp
+		additionalOptions["listedApp"] = *listedApp
 		// fmt.Println(*unlistedApp)
 
 	default:
@@ -167,6 +173,25 @@ func deleteProjectsByKeys(projects []ProjectSearchList, keysToDelete []string) [
 	// Iterate through the original projects and keep only those not in the keysToDeleteMap
 	for _, project := range projects {
 		if !keysToDeleteMap[project.Key] {
+			updatedProjects = append(updatedProjects, project)
+		}
+	}
+
+	return updatedProjects
+}
+
+func keepProjectsByKeys(projects []ProjectSearchList, keysToKeep []string) []ProjectSearchList {
+	var updatedProjects []ProjectSearchList
+
+	// Create a map for faster lookup of keys to keep
+	keysToKeepMap := make(map[string]bool)
+	for _, key := range keysToKeep {
+		keysToKeepMap[key] = true
+	}
+
+	// Iterate through the original projects and keep only those in the keysToKeepMap
+	for _, project := range projects {
+		if keysToKeepMap[project.Key] {
 			updatedProjects = append(updatedProjects, project)
 		}
 	}

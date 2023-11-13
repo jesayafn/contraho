@@ -131,7 +131,6 @@ func applicationsSearchApi(host string, size int, pageNumber int, applicationKey
 	queryParams.Add("p", fmt.Sprintf("%d", pageNumber))
 	encodedQuery := queryParams.Encode()
 	fullPath := host + applicationsSearch + "?" + encodedQuery
-	// fmt.Println(fullPath)
 	data = httpRequest(fullPath, authToken)
 	return data
 

@@ -252,7 +252,7 @@ func handleErr(err error) {
 
 // Just hold array of the project key of application
 func listApp(host string, credential string, lengthProject int) []string {
-	dispayJob("list project", "start")
+	dispayJob("list app", "start")
 	var applicationList []string
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
 		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
@@ -271,7 +271,7 @@ func listApp(host string, credential string, lengthProject int) []string {
 			applicationList = append(applicationList, structured.Components[projectIndex].Key)
 		}
 	}
-	dispayJob("list project", "end")
+	dispayJob("list app", "end")
 	return applicationList
 
 }
@@ -304,8 +304,6 @@ func listProjectofApplication(host string, projectListed []string, applicationKe
 		var projectSearchOfApplicationPage ProjectSearchOfApplicationPage
 		err := dataParse(data, &projectSearchOfApplicationPage)
 
-		// fmt.Println(projectSearchOfApplicationPage)
-
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -315,4 +313,30 @@ func listProjectofApplication(host string, projectListed []string, applicationKe
 	}
 	return projectListed
 
+}
+
+func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int) []ProjectSearchList {
+	lengthAppPage := projectSearchApiLength(host, credential, "APP")
+
+	applicationList := listApp(host, credential, lengthAppPage)
+	var lisedProjectOnApp []string
+	for i := range applicationList {
+		lengthProjectOfAppPage := applicationProjectSearchApiLength(host, applicationList[i], credential)
+		// fmt.Println(lengthProjectOfAppPage)
+		lisedProjectOnApp = listProjectofApplication(host, lisedProjectOnApp, applicationList[i],
+			lengthProjectOfAppPage, credential)
+		// fmt.Println(lisedProjectOnApp)
+	}
+
+	lisedProjectOnApp = removeRedundantValues(lisedProjectOnApp)
+
+	// fmt.Println(lisedProjectOnApp)
+	switch option {
+	case 0:
+		projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
+	case 1:
+		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
+	}
+
+	return projectList
 }
