@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 )
@@ -167,7 +168,7 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
 			// 	credential)
 			nlocRaw := measuresComponentApi(host, projectList[index].Key,
-				structured.Branches[branchIndex].Name, "nloc", credential)
+				structured.Branches[branchIndex].Name, "ncloc", credential)
 
 			var nlocStructured ProjectMeasures
 
@@ -204,10 +205,10 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
 		handleErr(err)
 		// projectList[index] = ProjectSearchList{
-		// 	HighestBranch:      structured.Branches[branchCalculatedNloc].Name,
-		// 	Loc:                strconv.Itoa(compareNloc[branchCalculatedNloc]),
-		// 	LastAnalysisDate:   compareLastDate[lastAnalysisDate],
-		// 	LastAnalysisBranch: structured.Branches[lastAnalysisDate].Name,
+		// 	HighestLinesOfCodeBranch: structured.Branches[branchCalculatedNloc].Name,
+		// 	LinesOfCode:              strconv.Itoa(compareNloc[branchCalculatedNloc]),
+		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
+		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
 		// }
 		projectList[index].HighestLinesOfCodeBranch = structured.Branches[branchCalculatedNloc].Name
 		projectList[index].LinesOfCode = strconv.Itoa(compareNloc[branchCalculatedNloc])
@@ -247,6 +248,7 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 func handleErr(err error) {
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
@@ -337,6 +339,27 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 	case 1:
 		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
 	}
+
+	return projectList
+}
+
+func qualityGateofProject(projectList []ProjectSearchList, host string, credential string) []ProjectSearchList {
+	// fmt.Println("Gather Branch Detail")
+	dispayJob("obtain quality gate data", "start")
+
+	for index := range projectList {
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := qualityGatesGetByProjectApi(host, projectList[index].Key, credential)
+		var structured QualityGatesGetByProject
+		err := dataParse(raw, &structured)
+
+		handleErr(err)
+
+		projectList[index].QualityGateId = structured.QualityGate.ID
+		projectList[index].QualityGateName = structured.QualityGate.Name
+
+	}
+	dispayJob("obtain quality gate data", "end")
 
 	return projectList
 }

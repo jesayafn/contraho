@@ -32,37 +32,78 @@ func projectSearch() {
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
 		projectList := applyOwnerInformation(
-			projectFiltering(
+			qualityGateofProject(
 				applyBranchDetail(
-					listProject(*host, credential, lengthProjectPage),
-					*host, credential),
-				*host, credential, 0),
-			*host, credential,
+					projectFiltering(
+						listProject(
+							*host,
+							credential,
+							lengthProjectPage,
+						),
+						*host,
+						credential,
+						0,
+					),
+					*host,
+					credential,
+				),
+				*host,
+				credential,
+			),
+			*host,
+			credential,
 		)
+
+		projectList = qualityGateofProject(projectList, *host, credential)
 
 		createCSVFile(*fileOutput, projectList)
 	case otheroptions["listedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
 		projectList := applyOwnerInformation(
-			projectFiltering(
+			qualityGateofProject(
 				applyBranchDetail(
-					listProject(*host, credential, lengthProjectPage),
-					*host, credential),
-				*host, credential, 1),
-			*host, credential,
+					projectFiltering(
+						listProject(
+							*host,
+							credential,
+							lengthProjectPage,
+						),
+						*host,
+						credential,
+						0,
+					),
+					*host,
+					credential,
+				),
+				*host,
+				credential,
+			),
+			*host,
+			credential,
 		)
+
 		createCSVFile(*fileOutput, projectList)
 	default:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
 		// fmt.Println(lengthProject)
 		projectList := applyOwnerInformation(
-			applyBranchDetail(
-				listProject(*host, credential, lengthProjectPage),
-				*host, credential,
+			qualityGateofProject(
+				applyBranchDetail(
+					listProject(
+						*host,
+						credential,
+						lengthProjectPage,
+					),
+					*host,
+					credential,
+				),
+				*host,
+				credential,
 			),
-			*host, credential,
+			*host,
+			credential,
 		)
 
 		createCSVFile(*fileOutput, projectList)

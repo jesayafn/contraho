@@ -17,8 +17,6 @@ func arguments(subcommand string) (host *string, username *string, password *str
 	username = flagSet.String("username", "admin", "Username will be used for authentication to Sonarqube server")
 	password = flagSet.String("password", "admin", "Password will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "contraho.csv", "CSV filename will be used for CSV output file")
-	// flag.Parse()
-	// flagSet.Parse(os.Args[2:])
 
 	additionalOptions = make(map[string]interface{})
 
@@ -28,11 +26,25 @@ func arguments(subcommand string) (host *string, username *string, password *str
 		unlistedApp := flagSet.Bool("unlisted-on-app", false, "This is UOA option")
 		listedApp := flagSet.Bool("listed-on-app", false, "This is LOA option")
 		flagSet.Parse(os.Args[2:])
+		credential := authorizationHeader(*username, *password)
+
+		raw := navigationGlobalApi(*host, credential)
+		// raw := []byte(`{"canAdmin":true,"globalPages":[],"settings":{"sonar.lf.enableGravatar":"false","sonar.developerAggregatedInfo.disabled":"false","sonar.lf.gravatarServerUrl":"https://secure.gravatar.com/avatar/{EMAIL_MD5}.jpg?s\u003d{SIZE}\u0026d\u003didenticon","sonar.technicalDebt.ratingGrid":"0.05,0.1,0.2,0.5","sonar.updatecenter.activate":"false"},"qualifiers":["TRK"],"version":"9.5 (build 56709)","productionDatabase":true,"branchesEnabled":false,"instanceUsesDefaultAdminCredentials":false,"multipleAlmEnabled":false,"projectImportFeatureEnabled":false,"regulatoryReportFeatureEnabled":false,"edition":"community","needIssueSync":false,"standalone":true}`)
+
+		var sonarqubeInfo NavigationGlobal
+		err := dataParse(raw, &sonarqubeInfo)
+
+		handleErr(err)
+		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
+			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
+			os.Exit(1)
+		}
 
 		if *unlistedApp && *listedApp {
 			fmt.Println("Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.")
 			os.Exit(1)
 		}
+
 		additionalOptions["unlistedApp"] = *unlistedApp
 		additionalOptions["listedApp"] = *listedApp
 		// fmt.Println(*unlistedApp)
@@ -88,7 +100,9 @@ func authorizationHeader(username string, password string) string {
 }
 
 func dataParse(data []byte, v interface{}) error {
+
 	return json.Unmarshal(data, v)
+
 }
 
 func findIndexOfHighestValue(numbers []int) int {

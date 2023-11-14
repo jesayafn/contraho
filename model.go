@@ -49,6 +49,8 @@ type ProjectSearchList struct {
 	Email                    string
 	LastAnalysisBranch       string
 	LastAnalysisDate         string
+	QualityGateId            string
+	QualityGateName          string
 	// Qualifier        string
 	// Visibility       string
 	// LastAnalysisDate string
@@ -148,4 +150,31 @@ type ProjectAnalyses struct {
 		} `json:"events"`
 		DetectedCI string `json:"detectedCI,omitempty"`
 	} `json:"analyses"`
+}
+
+type NavigationGlobal struct {
+	Version string `json:"version"`
+	Edition string `json:"edition"`
+	// GlobalPages []struct {
+	// 	Key  string `json:"key"`
+	// 	Name string `json:"name"`
+	// } `json:"globalPages"`
+	// Settings                map[string]string `json:"settings"`
+	// LogoUrl                 string            `json:"logoUrl"`
+	// LogoWidth               string            `json:"logoWidth"`
+	// Qualifiers              []string          `json:"qualifiers"`
+	// ProductionDatabase      bool              `json:"productionDatabase"`
+	// BranchesEnabled         bool              `json:"branchesEnabled"`
+	// ProjectImportFeature    bool              `json:"projectImportFeatureEnabled"`
+	// RegulatoryReportFeature bool              `json:"regulatoryReportFeatureEnabled"`
+	// CanAdmin                bool              `json:"canAdmin"`
+	// Standalone              bool              `json:"standalone"`
+}
+
+type QualityGatesGetByProject struct {
+	QualityGate struct {
+		ID      string `json:"id"`
+		Name    string `json:"name"`
+		Default bool   `json:"default"`
+	} `json:"qualityGate"`
 }

@@ -110,11 +110,11 @@ func permissionUsersApi(host string, projectKey string, authToken string) (data 
 	)
 
 	queryParams := url.Values{}
-	queryParams.Add("project", projectKey)
+	queryParams.Add("projectKey", projectKey)
 
 	encodedQuery := queryParams.Encode()
 	fullPath := host + permissionUsers + "?" + encodedQuery
-
+	// fmt.Println(fullPath)
 	data = httpRequest(fullPath, authToken)
 
 	return data
@@ -134,4 +134,27 @@ func applicationsSearchApi(host string, size int, pageNumber int, applicationKey
 	data = httpRequest(fullPath, authToken)
 	return data
 
+}
+
+func navigationGlobalApi(host string, authToken string) (data []byte) {
+	const (
+		navigationGlobal = "/api/navigation/global"
+	)
+	fullPath := host + navigationGlobal
+	// fmt.Println(authToken)
+	data = httpRequest(fullPath, authToken)
+	return data
+}
+
+func qualityGatesGetByProjectApi(host string, projectKey string, authToken string) (data []byte) {
+	const (
+		qualityGatesGetByProject = "/api/qualitygates/get_by_project"
+	)
+
+	queryParams := url.Values{}
+	queryParams.Add("project", projectKey)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + qualityGatesGetByProject + "?" + encodedQuery
+	data = httpRequest(fullPath, authToken)
+	return data
 }
