@@ -23,8 +23,8 @@ func arguments(subcommand string) (host *string, username *string, password *str
 	switch subcommand {
 	case "project":
 
-		unlistedApp := flagSet.Bool("unlisted-on-app", false, "This is UOA option")
-		listedApp := flagSet.Bool("listed-on-app", false, "This is LOA option")
+		unlistedApp := flagSet.Bool("unlisted-on-app", false, "List only not listed projects on any application")
+		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
 		flagSet.Parse(os.Args[2:])
 		credential := authorizationHeader(*username, *password)
 
