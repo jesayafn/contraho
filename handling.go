@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 )
 
-var (
+const (
 	pageSize = 500
 )
 
@@ -31,7 +32,7 @@ func indexPageNumberCounter(getProjectSearchPage interface{}) int {
 			pages = 1
 		}
 		return pages
-	case ProjectSearchOfApplication:
+	case ProjectSearchOfApplicationPage:
 		pages := page.Paging.Total / pageSize
 		if page.Paging.Total%pageSize > 0 {
 			pages++
@@ -43,7 +44,14 @@ func indexPageNumberCounter(getProjectSearchPage interface{}) int {
 	default:
 		return 0
 	}
-
+	// pages := getProjectSearchPage.Paging.Total / pageSize
+	// if getProjectSearchPage.Paging.Total%pageSize > 0 {
+	// 	pages++
+	// }
+	// if pages < 1 {
+	// 	pages = 1
+	// }
+	// return pages
 }
 
 func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSearchList {
@@ -68,8 +76,12 @@ func removeByKeys(list []ProjectSearchList, keysToRemove []string) []ProjectSear
 	return updatedList
 }
 
-func projectLength(host string, credential string) int {
-	data := httpRequest(host+projectIndexApi, credential)
+func projectSearchApiLength(host string, credential string, projectType string) int {
+	// data := httpRequest(host+projectIndexApi, credential)
+	// var data []byte
+
+	data := projectSearchApi(host, projectType, 1, 1, credential)
+
 	// fmt.Println(string(data))
 	var projectSearchPage ProjectSearchPage
 	err := dataParse(data, &projectSearchPage)
@@ -87,9 +99,9 @@ func listProject(host string, credential string, lengthProject int) []ProjectSea
 	dispayJob("list project", "start")
 	var projectList []ProjectSearchList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
-		raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
-			credential)
-		// fmt.Println(raw)
+		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
+		// 	credential)
+		raw := projectSearchApi(host, "TRK", 500, pageIndex, credential)
 
 		var structured ProjectSearchPage
 
@@ -139,7 +151,8 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 	dispayJob("obtain branch data", "start")
 
 	for index := range projectList {
-		raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := projectBranchesListApi(host, projectList[index].Key, credential)
 		var structured ProjectBranchesList
 		err := dataParse(raw, &structured)
 
@@ -151,9 +164,11 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 			compareLastDate []string
 		)
 		for branchIndex := range structured.Branches {
-			nlocRaw := httpRequest(
-				host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-				credential)
+			// nlocRaw := httpRequest(
+			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			nlocRaw := measuresComponentApi(host, projectList[index].Key,
+				structured.Branches[branchIndex].Name, "ncloc", credential)
 
 			var nlocStructured ProjectMeasures
 
@@ -168,8 +183,10 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 			}
 			compareNloc = append(compareNloc, loc)
 
-			lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-				credential)
+			// lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
+				structured.Branches[branchIndex].Name, credential)
 
 			var lastDateStructured ProjectAnalyses
 			err = dataParse(lastDateRaw, &lastDateStructured)
@@ -188,10 +205,10 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
 		handleErr(err)
 		// projectList[index] = ProjectSearchList{
-		// 	HighestBranch:      structured.Branches[branchCalculatedNloc].Name,
-		// 	Loc:                strconv.Itoa(compareNloc[branchCalculatedNloc]),
-		// 	LastAnalysisDate:   compareLastDate[lastAnalysisDate],
-		// 	LastAnalysisBranch: structured.Branches[lastAnalysisDate].Name,
+		// 	HighestLinesOfCodeBranch: structured.Branches[branchCalculatedNloc].Name,
+		// 	LinesOfCode:              strconv.Itoa(compareNloc[branchCalculatedNloc]),
+		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
+		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
 		// }
 		projectList[index].HighestLinesOfCodeBranch = structured.Branches[branchCalculatedNloc].Name
 		projectList[index].LinesOfCode = strconv.Itoa(compareNloc[branchCalculatedNloc])
@@ -209,7 +226,8 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 	dispayJob("obtain project owner", "start")
 
 	for index := range projectList {
-		raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
+		// raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
+		raw := permissionUsersApi(host, projectList[index].Key, credential)
 		var structured ProjectPermissions
 
 		err := dataParse(raw, &structured)
@@ -230,5 +248,118 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 func handleErr(err error) {
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
+}
+
+// Just hold array of the project key of application
+func listApp(host string, credential string, lengthProject int) []string {
+	dispayJob("list app", "start")
+	var applicationList []string
+	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
+		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
+		// 	credential)
+		raw := projectSearchApi(host, "APP", 500, pageIndex, credential)
+
+		var structured ProjectSearchPage
+
+		err := dataParse(raw, &structured)
+		// fmt.Println(structured)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		for projectIndex := range structured.Components {
+			applicationList = append(applicationList, structured.Components[projectIndex].Key)
+		}
+	}
+	dispayJob("list app", "end")
+	return applicationList
+
+}
+
+func applicationProjectSearchApiLength(host string, applicationKey string, credential string) int {
+	// data := httpRequest(host+projectIndexApi, credential)
+	// var data []byte
+
+	data := applicationsSearchApi(host, 1, 1, applicationKey, credential)
+
+	// fmt.Println(string(data))
+	var ProjectSearchOfApplicationPage ProjectSearchOfApplicationPage
+	err := dataParse(data, &ProjectSearchOfApplicationPage)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// fmt.Println(projectSearchPage)
+	indexPageNumber := indexPageNumberCounter(ProjectSearchOfApplicationPage)
+
+	return indexPageNumber
+}
+
+func listProjectofApplication(host string, projectListed []string, applicationKey string, lengthPage int, credential string) []string {
+	// var projectListed []string
+
+	for pageIndex := 1; pageIndex <= lengthPage; pageIndex++ {
+		data := applicationsSearchApi(host, 500, pageIndex, applicationKey, credential)
+
+		var projectSearchOfApplicationPage ProjectSearchOfApplicationPage
+		err := dataParse(data, &projectSearchOfApplicationPage)
+
+		if err != nil {
+			fmt.Println(err)
+		}
+		for _, project := range projectSearchOfApplicationPage.Projects {
+			projectListed = append(projectListed, project.Key)
+		}
+	}
+	return projectListed
+
+}
+
+func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int) []ProjectSearchList {
+	lengthAppPage := projectSearchApiLength(host, credential, "APP")
+
+	applicationList := listApp(host, credential, lengthAppPage)
+	var lisedProjectOnApp []string
+	for i := range applicationList {
+		lengthProjectOfAppPage := applicationProjectSearchApiLength(host, applicationList[i], credential)
+		// fmt.Println(lengthProjectOfAppPage)
+		lisedProjectOnApp = listProjectofApplication(host, lisedProjectOnApp, applicationList[i],
+			lengthProjectOfAppPage, credential)
+		// fmt.Println(lisedProjectOnApp)
+	}
+
+	lisedProjectOnApp = removeRedundantValues(lisedProjectOnApp)
+
+	// fmt.Println(lisedProjectOnApp)
+	switch option {
+	case 0:
+		projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
+	case 1:
+		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
+	}
+
+	return projectList
+}
+
+func qualityGateofProject(projectList []ProjectSearchList, host string, credential string) []ProjectSearchList {
+	// fmt.Println("Gather Branch Detail")
+	dispayJob("obtain quality gate data", "start")
+
+	for index := range projectList {
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := qualityGatesGetByProjectApi(host, projectList[index].Key, credential)
+		var structured QualityGatesGetByProject
+		err := dataParse(raw, &structured)
+
+		handleErr(err)
+
+		projectList[index].QualityGateId = structured.QualityGate.ID
+		projectList[index].QualityGateName = structured.QualityGate.Name
+
+	}
+	dispayJob("obtain quality gate data", "end")
+
+	return projectList
 }

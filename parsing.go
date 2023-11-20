@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,16 +11,85 @@ import (
 	"strconv"
 )
 
-func arguments() (host *string, username *string, password *string, fileOutput *string) {
+func arguments(subcommand string) (host *string, username *string, password *string, fileOutput *string, additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
 	username = flagSet.String("username", "admin", "Username will be used for authentication to Sonarqube server")
 	password = flagSet.String("password", "admin", "Password will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "contraho.csv", "CSV filename will be used for CSV output file")
-	// flag.Parse()
-	flagSet.Parse(os.Args[2:])
-	return host, username, password, fileOutput
 
+	additionalOptions = make(map[string]interface{})
+
+	switch subcommand {
+	case "project":
+
+		unlistedApp := flagSet.Bool("unlisted-on-app", false, "List only not listed projects on any application")
+		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
+		flagSet.Parse(os.Args[2:])
+		credential := authorizationHeader(*username, *password)
+
+		raw := navigationGlobalApi(*host, credential)
+		// raw := []byte(`{"canAdmin":true,"globalPages":[],"settings":{"sonar.lf.enableGravatar":"false","sonar.developerAggregatedInfo.disabled":"false","sonar.lf.gravatarServerUrl":"https://secure.gravatar.com/avatar/{EMAIL_MD5}.jpg?s\u003d{SIZE}\u0026d\u003didenticon","sonar.technicalDebt.ratingGrid":"0.05,0.1,0.2,0.5","sonar.updatecenter.activate":"false"},"qualifiers":["TRK"],"version":"9.5 (build 56709)","productionDatabase":true,"branchesEnabled":false,"instanceUsesDefaultAdminCredentials":false,"multipleAlmEnabled":false,"projectImportFeatureEnabled":false,"regulatoryReportFeatureEnabled":false,"edition":"community","needIssueSync":false,"standalone":true}`)
+
+		var sonarqubeInfo NavigationGlobal
+		err := dataParse(raw, &sonarqubeInfo)
+
+		handleErr(err)
+		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
+			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
+			os.Exit(1)
+		}
+
+		if *unlistedApp && *listedApp {
+			fmt.Println("Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.")
+			os.Exit(1)
+		}
+
+		additionalOptions["unlistedApp"] = *unlistedApp
+		additionalOptions["listedApp"] = *listedApp
+		// fmt.Println(*unlistedApp)
+
+	default:
+		fmt.Println("tesuto")
+	}
+
+	return host, username, password, fileOutput, additionalOptions
+
+}
+
+func createCSVFile(fileOutput string, data interface{}) {
+	// Open the CSV file
+	file, err := os.Create(fileOutput)
+	if err != nil {
+		fmt.Println("Error creating CSV file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Use reflection to get field names and values
+	val := reflect.ValueOf(data)
+	if val.Kind() != reflect.Slice {
+		fmt.Println("Input data is not a slice")
+		return
+	}
+
+	// Write the CSV header (field names)
+	if val.Len() > 0 {
+		header := getStructFieldNames(val.Index(0).Interface())
+		writer.Write(header)
+	}
+
+	// Write the data rows
+	for i := 0; i < val.Len(); i++ {
+		row := getStructFieldValues(val.Index(i).Interface())
+		writer.Write(row)
+	}
+
+	fmt.Println("CSV file generated successfully!")
 }
 
 func authorizationHeader(username string, password string) string {
@@ -30,7 +100,9 @@ func authorizationHeader(username string, password string) string {
 }
 
 func dataParse(data []byte, v interface{}) error {
+
 	return json.Unmarshal(data, v)
+
 }
 
 func findIndexOfHighestValue(numbers []int) int {
@@ -82,4 +154,61 @@ func getStructFieldValues(v interface{}) []string {
 		}
 	}
 	return values
+}
+
+func removeRedundantValues(arr []string) []string {
+	// Create a map to store unique values
+	uniqueValues := make(map[string]bool)
+
+	// Create a new array to store non-redundant values
+	uniqueArray := make([]string, 0)
+
+	// Iterate through the original array
+	for _, val := range arr {
+		// If the value is not in the map, add it to the new array and mark it as seen
+		if !uniqueValues[val] {
+			uniqueArray = append(uniqueArray, val)
+			uniqueValues[val] = true
+		}
+	}
+
+	return uniqueArray
+}
+
+func deleteProjectsByKeys(projects []ProjectSearchList, keysToDelete []string) []ProjectSearchList {
+	var updatedProjects []ProjectSearchList
+
+	// Create a map for faster lookup of keys to delete
+	keysToDeleteMap := make(map[string]bool)
+	for _, key := range keysToDelete {
+		keysToDeleteMap[key] = true
+	}
+
+	// Iterate through the original projects and keep only those not in the keysToDeleteMap
+	for _, project := range projects {
+		if !keysToDeleteMap[project.Key] {
+			updatedProjects = append(updatedProjects, project)
+		}
+	}
+
+	return updatedProjects
+}
+
+func keepProjectsByKeys(projects []ProjectSearchList, keysToKeep []string) []ProjectSearchList {
+	var updatedProjects []ProjectSearchList
+
+	// Create a map for faster lookup of keys to keep
+	keysToKeepMap := make(map[string]bool)
+	for _, key := range keysToKeep {
+		keysToKeepMap[key] = true
+	}
+
+	// Iterate through the original projects and keep only those in the keysToKeepMap
+	for _, project := range projects {
+		if keysToKeepMap[project.Key] {
+			updatedProjects = append(updatedProjects, project)
+		}
+	}
+
+	return updatedProjects
 }
