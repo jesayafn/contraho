@@ -71,7 +71,7 @@ func projectSearch() {
 						),
 						*host,
 						credential,
-						0,
+						1,
 					),
 					*host,
 					credential,
