@@ -1,14 +1,20 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"strconv"
 	"time"
 )
 
 const (
 	pageSize = 500
+)
+
+var (
+	loadingCh = make(chan bool)
 )
 
 // Define a function to apply branch detail to the project list
@@ -96,7 +102,9 @@ func projectSearchApiLength(host string, credential string, projectType string) 
 }
 
 func listProject(host string, credential string, lengthProject int) []ProjectSearchList {
-	dispayJob("list project", "start")
+
+	displayJob("list project", "start")
+	go displayLoading(loadingCh)
 	var projectList []ProjectSearchList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
 		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
@@ -118,7 +126,8 @@ func listProject(host string, credential string, lengthProject int) []ProjectSea
 			})
 		}
 	}
-	dispayJob("list project", "end")
+	loadingCh <- true
+	displayJob("list project", "end")
 	return projectList
 
 }
@@ -148,7 +157,9 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 
 func branchDetailOfProjects(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
 	// fmt.Println("Gather Branch Detail")
-	dispayJob("obtain branch data", "start")
+
+	displayJob("obtain branch data", "start")
+	go displayLoading(loadingCh)
 
 	for index := range projectList {
 		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
@@ -210,20 +221,23 @@ func branchDetailOfProjects(host string, credential string, projectList []Projec
 		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
 		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
 		// }
-		projectList[index].HighestLinesOfCodeBranch = structured.Branches[branchCalculatedNloc].Name
-		projectList[index].LinesOfCode = strconv.Itoa(compareNloc[branchCalculatedNloc])
+		projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
+		projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
 		projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
 		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
 
 	}
-	dispayJob("obtain branch data", "end")
+	loadingCh <- true
+	displayJob("obtain branch data", "end")
 
 	return projectList
 }
 
 func ownerProject(host string, credential string, projectList []ProjectSearchList) []ProjectSearchList {
 	// fmt.Println("Owner func")
-	dispayJob("obtain project owner", "start")
+
+	displayJob("obtain project owner", "start")
+	go displayLoading(loadingCh)
 
 	for index := range projectList {
 		// raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
@@ -242,7 +256,8 @@ func ownerProject(host string, credential string, projectList []ProjectSearchLis
 		projectList[index].Email = structured.Users[0].Email
 
 	}
-	dispayJob("obtain project owner", "end")
+	loadingCh <- true
+	displayJob("obtain project owner", "end")
 	return projectList
 }
 func handleErr(err error) {
@@ -254,7 +269,10 @@ func handleErr(err error) {
 
 // Just hold array of the project key of application
 func listApp(host string, credential string, lengthProject int) []string {
-	dispayJob("list app", "start")
+
+	displayJob("list app", "start")
+	go displayLoading(loadingCh)
+
 	var applicationList []string
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
 		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
@@ -273,7 +291,8 @@ func listApp(host string, credential string, lengthProject int) []string {
 			applicationList = append(applicationList, structured.Components[projectIndex].Key)
 		}
 	}
-	dispayJob("list app", "end")
+	loadingCh <- true
+	displayJob("list app", "end")
 	return applicationList
 
 }
@@ -345,7 +364,9 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 
 func qualityGateofProject(projectList []ProjectSearchList, host string, credential string) []ProjectSearchList {
 	// fmt.Println("Gather Branch Detail")
-	dispayJob("obtain quality gate data", "start")
+
+	displayJob("obtain quality gate data", "start")
+	go displayLoading(loadingCh)
 
 	for index := range projectList {
 		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
@@ -359,7 +380,144 @@ func qualityGateofProject(projectList []ProjectSearchList, host string, credenti
 		projectList[index].QualityGateName = structured.QualityGate.Name
 
 	}
-	dispayJob("obtain quality gate data", "end")
+	displayJob("obtain quality gate data", "end")
 
 	return projectList
+}
+
+// func printStructTable(data interface{}, columnsToShow ...string) {
+// 	val := reflect.ValueOf(data)
+
+// 	// Check if the input is an array or slice of structs
+// 	if val.Kind() != reflect.Slice {
+// 		fmt.Println("Input is not a slice")
+// 		return
+// 	}
+
+// 	// Check if the slice is empty
+// 	if val.Len() == 0 {
+// 		fmt.Println("Slice is empty")
+// 		return
+// 	}
+
+// 	// Determine column widths
+// 	columnWidths := make([]int, val.Index(0).NumField())
+// 	typ := val.Index(0).Type()
+
+// 	// Find the maximum width for each column
+// 	for i := 0; i < typ.NumField(); i++ {
+// 		columnName := typ.Field(i).Name
+// 		if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
+// 			for j := 0; j < val.Len(); j++ {
+// 				fieldValue := fmt.Sprintf("%v", val.Index(j).Field(i).Interface())
+// 				fieldWidth := len(fieldValue)
+// 				if fieldWidth > columnWidths[i] {
+// 					columnWidths[i] = fieldWidth
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	// Print header
+// 	for i := 0; i < typ.NumField(); i++ {
+// 		columnName := typ.Field(i).Name
+// 		if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
+// 			fmt.Printf("%-*s", columnWidths[i]+2, columnName)
+// 		}
+// 	}
+// 	fmt.Println()
+
+// 	// Print values
+// 	for j := 0; j < val.Len(); j++ {
+// 		for i := 0; i < typ.NumField(); i++ {
+// 			columnName := typ.Field(i).Name
+// 			if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
+// 				fieldValue := fmt.Sprintf("%v", val.Index(j).Field(i).Interface())
+// 				fmt.Printf("%-*s", columnWidths[i]+2, fieldValue)
+// 			}
+// 		}
+// 		fmt.Println()
+// 	}
+// }
+
+func printStructTable(data interface{}, selectedColumns ...string) {
+	slice := reflect.ValueOf(data)
+
+	if err := validateInput(slice); err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	columnWidths := calculateColumnWidths(slice, selectedColumns)
+	// fmt.Println(columnWidths)
+
+	printHeader(slice, columnWidths, selectedColumns)
+	printValues(slice, columnWidths, selectedColumns)
+}
+
+func validateInput(slice reflect.Value) error {
+	if slice.Kind() != reflect.Slice {
+		return errors.New("Input is not a slice")
+	}
+
+	if slice.Len() == 0 {
+		return errors.New("Slice is empty")
+	}
+
+	return nil
+}
+
+func calculateColumnWidths(slice reflect.Value, selectedColumns []string) []int {
+	columnWidths := make([]int, slice.Index(0).Type().NumField())
+
+	for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
+		fieldName := slice.Index(0).Type().Field(fieldIndex).Name
+		if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
+			updateColumnWidths(slice, fieldIndex, columnWidths)
+		}
+	}
+
+	return columnWidths
+}
+
+func updateColumnWidths(slice reflect.Value, fieldIndex int, columnWidths []int) {
+	for rowIndex := 0; rowIndex < slice.Len(); rowIndex++ {
+		cellValue := fmt.Sprintf("%v", slice.Index(rowIndex).Field(fieldIndex).Interface())
+		cellWidth := len(cellValue)
+		if cellWidth > columnWidths[fieldIndex] {
+			columnWidths[fieldIndex] = cellWidth
+		}
+	}
+}
+
+func printHeader(slice reflect.Value, columnWidths []int, selectedColumns []string) {
+	for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
+		fieldName := slice.Index(0).Type().Field(fieldIndex).Name
+		if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
+			fmt.Printf("%-*s", columnWidths[fieldIndex]+2, fieldName)
+		}
+	}
+	fmt.Println()
+}
+
+func printValues(slice reflect.Value, columnWidths []int, selectedColumns []string) {
+	for rowIndex := 0; rowIndex < slice.Len(); rowIndex++ {
+		for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
+			fieldName := slice.Index(0).Type().Field(fieldIndex).Name
+			if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
+				cellValue := fmt.Sprintf("%v", slice.Index(rowIndex).Field(fieldIndex).Interface())
+				fmt.Printf("%-*s", columnWidths[fieldIndex]+2, cellValue)
+			}
+		}
+		fmt.Println()
+	}
+}
+
+func contains(slice []string, s string) bool {
+	for _, value := range slice {
+		if value == s {
+			return true
+		}
+	}
+	return false
 }
