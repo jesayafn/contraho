@@ -53,10 +53,13 @@ func projectSearch() {
 			*host,
 			credential,
 		)
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+		}
 
-		projectList = qualityGateofProject(projectList, *host, credential)
-
-		createCSVFile(*fileOutput, projectList)
 	case otheroptions["listedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
@@ -83,7 +86,12 @@ func projectSearch() {
 			credential,
 		)
 
-		createCSVFile(*fileOutput, projectList)
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+		}
 	default:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
@@ -106,7 +114,14 @@ func projectSearch() {
 			credential,
 		)
 
-		createCSVFile(*fileOutput, projectList)
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+			// printStructTable(projectList)
+		}
 	}
 
 }

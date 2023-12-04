@@ -16,7 +16,7 @@ func arguments(subcommand string) (host *string, username *string, password *str
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
 	username = flagSet.String("username", "admin", "Username will be used for authentication to Sonarqube server")
 	password = flagSet.String("password", "admin", "Password will be used for authentication to Sonarqube server")
-	fileOutput = flagSet.String("filename", "contraho.csv", "CSV filename will be used for CSV output file")
+	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
 
 	additionalOptions = make(map[string]interface{})
 
