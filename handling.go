@@ -145,31 +145,34 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 
 	return latestDateIndex, nil
 }
-
 func branchDetailOfProjects(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
+	// fmt.Println("Gather Branch Detail")
+
 	displayJob("obtain branch data", "start")
-	displayLoading(loadingCh)
+	go displayLoading(loadingCh)
 
-	var updatedProjectList []ProjectSearchList
-
-	for _, project := range projectList {
-		// fmt.Println(project.Key)
-		raw := projectBranchesListApi(host, project.Key, credential, authMode)
+	for index := range projectList {
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
 		var structured ProjectBranchesList
 		err := dataParse(raw, &structured)
-		handleErr(err)
 
+		handleErr(err)
 		var (
 			compareNloc     []int
 			loc             int
 			lastDate        string
 			compareLastDate []string
 		)
-
 		for branchIndex := range structured.Branches {
-			nlocRaw := measuresComponentApi(host, project.Key, structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
+			// nlocRaw := httpRequest(
+			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			nlocRaw := measuresComponentApi(host, projectList[index].Key,
+				structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
 
 			var nlocStructured ProjectMeasures
+
 			err := dataParse(nlocRaw, &nlocStructured)
 			handleErr(err)
 
@@ -181,7 +184,10 @@ func branchDetailOfProjects(projectList []ProjectSearchList, host string, creden
 			}
 			compareNloc = append(compareNloc, loc)
 
-			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, project.Key, structured.Branches[branchIndex].Name, credential, authMode)
+			// lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
+			// 	credential)
+			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
+				structured.Branches[branchIndex].Name, credential, authMode)
 
 			var lastDateStructured ProjectAnalyses
 			err = dataParse(lastDateRaw, &lastDateStructured)
@@ -195,25 +201,26 @@ func branchDetailOfProjects(projectList []ProjectSearchList, host string, creden
 
 			compareLastDate = append(compareLastDate, lastDate)
 		}
-
+		// fmt.Println(projectList[index].Key, compareLastDate)
 		branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
 		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
 		handleErr(err)
+		// projectList[index] = ProjectSearchList{
+		// 	HighestLinesOfCodeBranch: structured.Branches[branchCalculatedNloc].Name,
+		// 	LinesOfCode:              strconv.Itoa(compareNloc[branchCalculatedNloc]),
+		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
+		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
+		// }
+		projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
+		projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
+		projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
+		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
 
-		updatedProjectList = append(updatedProjectList, ProjectSearchList{
-			Key:                project.Key,
-			Name:               project.Name,
-			Branch:             structured.Branches[branchCalculatedNloc].Name,
-			Loc:                strconv.Itoa(compareNloc[branchCalculatedNloc]),
-			LastAnalysisDate:   compareLastDate[lastAnalysisDate],
-			LastAnalysisBranch: structured.Branches[lastAnalysisDate].Name,
-		})
 	}
-
 	loadingCh <- true
 	displayJob("obtain branch data", "end")
 
-	return updatedProjectList
+	return projectList
 }
 
 func ownerProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {

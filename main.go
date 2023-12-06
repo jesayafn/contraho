@@ -38,15 +38,33 @@ func projectSearch() {
 	switch {
 	case otheroptions["unlistedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := listProject(*host, credential, lengthProjectPage, authMode)
-
-		projectList = projectFiltering(projectList, *host, credential, 0, authMode)
-
-		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
-
-		projectList = ownerProject(projectList, *host, credential, authMode)
-
-		projectList = qualityGateofProject(projectList, *host, credential, authMode)
+		projectList := ownerProject(
+			qualityGateofProject(
+				branchDetailOfProjects(
+					projectFiltering(
+						listProject(
+							*host,
+							credential,
+							lengthProjectPage,
+							authMode,
+						),
+						*host,
+						credential,
+						0,
+						authMode,
+					),
+					*host,
+					credential,
+					authMode,
+				),
+				*host,
+				credential,
+				authMode,
+			),
+			*host,
+			credential,
+			authMode,
+		)
 
 		if *fileOutput != "" {
 			createCSVFile(*fileOutput, projectList)
@@ -57,15 +75,33 @@ func projectSearch() {
 
 	case otheroptions["listedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := listProject(*host, credential, lengthProjectPage, authMode)
-
-		projectList = projectFiltering(projectList, *host, credential, 1, authMode)
-
-		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
-
-		projectList = ownerProject(projectList, *host, credential, authMode)
-
-		projectList = qualityGateofProject(projectList, *host, credential, authMode)
+		projectList := ownerProject(
+			qualityGateofProject(
+				branchDetailOfProjects(
+					projectFiltering(
+						listProject(
+							*host,
+							credential,
+							lengthProjectPage,
+							authMode,
+						),
+						*host,
+						credential,
+						1,
+						authMode,
+					),
+					*host,
+					credential,
+					authMode,
+				),
+				*host,
+				credential,
+				authMode,
+			),
+			*host,
+			credential,
+			authMode,
+		)
 
 		if *fileOutput != "" {
 			createCSVFile(*fileOutput, projectList)
@@ -75,13 +111,27 @@ func projectSearch() {
 		}
 	default:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := listProject(*host, credential, lengthProjectPage, authMode)
-
-		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
-
-		projectList = ownerProject(projectList, *host, credential, authMode)
-
-		projectList = qualityGateofProject(projectList, *host, credential, authMode)
+		projectList := ownerProject(
+			qualityGateofProject(
+				branchDetailOfProjects(
+					listProject(
+						*host,
+						credential,
+						lengthProjectPage,
+						authMode,
+					),
+					*host,
+					credential,
+					authMode,
+				),
+				*host,
+				credential,
+				authMode,
+			),
+			*host,
+			credential,
+			authMode,
+		)
 
 		// fmt.Println(lengthProject)
 
