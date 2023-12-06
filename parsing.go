@@ -11,14 +11,17 @@ import (
 	"strconv"
 )
 
-func arguments(subcommand string) (host *string, username *string, password *string, fileOutput *string, additionalOptions map[string]interface{}) {
+func arguments(subcommand string) (host *string, username *string, password *string, token *string, authMode int, fileOutput *string, additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
-	username = flagSet.String("username", "admin", "Username will be used for authentication to Sonarqube server")
-	password = flagSet.String("password", "admin", "Password will be used for authentication to Sonarqube server")
+	username = flagSet.String("username", "", "Username will be used for authentication to Sonarqube server")
+	password = flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
+	token = flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
 
 	additionalOptions = make(map[string]interface{})
+
+	// var authMode int
 
 	switch subcommand {
 	case "project":
@@ -26,9 +29,22 @@ func arguments(subcommand string) (host *string, username *string, password *str
 		unlistedApp := flagSet.Bool("unlisted-on-app", false, "List only not listed projects on any application")
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
 		flagSet.Parse(os.Args[2:])
-		credential := authorizationHeader(*username, *password)
+		if *username != "" && *password != "" && *token == "" {
+			authMode = 1
+		} else {
+			authMode = 0
+		}
+		var credential string
+		switch authMode {
+		case 0:
+			credential = *token
+		case 1:
+			credential = authorizationHeader(*username, *password)
+		}
 
-		raw := navigationGlobalApi(*host, credential)
+		// fmt.Println(*username, *password, credential, authMode)
+
+		raw := navigationGlobalApi(*host, credential, authMode)
 		// raw := []byte(`{"canAdmin":true,"globalPages":[],"settings":{"sonar.lf.enableGravatar":"false","sonar.developerAggregatedInfo.disabled":"false","sonar.lf.gravatarServerUrl":"https://secure.gravatar.com/avatar/{EMAIL_MD5}.jpg?s\u003d{SIZE}\u0026d\u003didenticon","sonar.technicalDebt.ratingGrid":"0.05,0.1,0.2,0.5","sonar.updatecenter.activate":"false"},"qualifiers":["TRK"],"version":"9.5 (build 56709)","productionDatabase":true,"branchesEnabled":false,"instanceUsesDefaultAdminCredentials":false,"multipleAlmEnabled":false,"projectImportFeatureEnabled":false,"regulatoryReportFeatureEnabled":false,"edition":"community","needIssueSync":false,"standalone":true}`)
 
 		var sonarqubeInfo NavigationGlobal
@@ -53,7 +69,7 @@ func arguments(subcommand string) (host *string, username *string, password *str
 		fmt.Println("tesuto")
 	}
 
-	return host, username, password, fileOutput, additionalOptions
+	return host, username, password, token, authMode, fileOutput, additionalOptions
 
 }
 

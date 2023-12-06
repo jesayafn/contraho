@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -23,36 +24,30 @@ func main() {
 }
 
 func projectSearch() {
-	host, username, password, fileOutput, otheroptions := arguments("project")
+	startTime := time.Now()
 
-	credential := authorizationHeader(*username, *password)
+	host, username, password, token, authMode, fileOutput, otheroptions := arguments("project")
+	var credential string
+	switch authMode {
+	case 0:
+		credential = *token
+	case 1:
+		credential = authorizationHeader(*username, *password)
+	}
 
 	switch {
 	case otheroptions["unlistedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := listProject(*host, credential, lengthProjectPage, authMode)
 
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					projectFiltering(
-						listProject(
-							*host,
-							credential,
-							lengthProjectPage,
-						),
-						*host,
-						credential,
-						0,
-					),
-					*host,
-					credential,
-				),
-				*host,
-				credential,
-			),
-			*host,
-			credential,
-		)
+		projectList = projectFiltering(projectList, *host, credential, 0, authMode)
+
+		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
+
+		projectList = ownerProject(projectList, *host, credential, authMode)
+
+		projectList = qualityGateofProject(projectList, *host, credential, authMode)
+
 		if *fileOutput != "" {
 			createCSVFile(*fileOutput, projectList)
 		} else {
@@ -61,30 +56,16 @@ func projectSearch() {
 		}
 
 	case otheroptions["listedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := listProject(*host, credential, lengthProjectPage, authMode)
 
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					projectFiltering(
-						listProject(
-							*host,
-							credential,
-							lengthProjectPage,
-						),
-						*host,
-						credential,
-						1,
-					),
-					*host,
-					credential,
-				),
-				*host,
-				credential,
-			),
-			*host,
-			credential,
-		)
+		projectList = projectFiltering(projectList, *host, credential, 1, authMode)
+
+		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
+
+		projectList = ownerProject(projectList, *host, credential, authMode)
+
+		projectList = qualityGateofProject(projectList, *host, credential, authMode)
 
 		if *fileOutput != "" {
 			createCSVFile(*fileOutput, projectList)
@@ -93,26 +74,16 @@ func projectSearch() {
 			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
 		}
 	default:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := listProject(*host, credential, lengthProjectPage, authMode)
+
+		projectList = branchDetailOfProjects(projectList, *host, credential, authMode)
+
+		projectList = ownerProject(projectList, *host, credential, authMode)
+
+		projectList = qualityGateofProject(projectList, *host, credential, authMode)
 
 		// fmt.Println(lengthProject)
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					listProject(
-						*host,
-						credential,
-						lengthProjectPage,
-					),
-					*host,
-					credential,
-				),
-				*host,
-				credential,
-			),
-			*host,
-			credential,
-		)
 
 		if *fileOutput != "" {
 			createCSVFile(*fileOutput, projectList)
@@ -123,5 +94,9 @@ func projectSearch() {
 			// printStructTable(projectList)
 		}
 	}
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 
 }
