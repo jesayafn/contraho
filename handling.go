@@ -327,6 +327,9 @@ func listProjectofApplication(host string, projectListed []string, applicationKe
 }
 
 func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int, authMode int) []ProjectSearchList {
+	displayJob("project filtering", "start")
+	go displayLoading(loadingCh)
+
 	lengthAppPage := projectSearchApiLength(host, credential, "APP", authMode)
 
 	applicationList := listApp(host, credential, lengthAppPage, authMode)
@@ -348,6 +351,8 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 	case 1:
 		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
 	}
+
+	displayJob("project filtering", "end")
 
 	return projectList
 }
