@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -380,60 +381,40 @@ func qualityGateofProject(projectList []ProjectSearchList, host string, credenti
 	return projectList
 }
 
-// func printStructTable(data interface{}, columnsToShow ...string) {
-// 	val := reflect.ValueOf(data)
+func languageofProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
 
-// 	// Check if the input is an array or slice of structs
-// 	if val.Kind() != reflect.Slice {
-// 		fmt.Println("Input is not a slice")
-// 		return
-// 	}
+	const empty = `-`
 
-// 	// Check if the slice is empty
-// 	if val.Len() == 0 {
-// 		fmt.Println("Slice is empty")
-// 		return
-// 	}
+	for index := range projectList {
+		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
+		raw := navigationComponentApi(host, projectList[index].Key, credential, authMode)
+		var structured NavigationComponent
+		err := dataParse(raw, &structured)
+		handleErr(err)
+		qualityProfilesKeys := make([]string, len(structured.QualityProfiles))
+		for indexKey, profile := range structured.QualityProfiles {
+			qualityProfilesKeys[indexKey] = profile.Key
+		}
+		// fmt.Println(qualityProfilesKey)
 
-// 	// Determine column widths
-// 	columnWidths := make([]int, val.Index(0).NumField())
-// 	typ := val.Index(0).Type()
+		if len(qualityProfilesKeys) != 0 {
+			qualityProfilesNames := make([]string, len(qualityProfilesKeys)) //
+			for indexKey, qualityProfileKey := range qualityProfilesKeys {
+				raw := qualityProfilesShowApi(host, qualityProfileKey, credential, authMode)
+				var structured QualityProfilesShow
+				err := dataParse(raw, &structured)
+				handleErr(err)
+				qualityProfilesNames[indexKey] = structured.Profile.LanguageName
+			}
+			projectList[index].Language = strings.Join(qualityProfilesNames, ", ")
+		} else {
+			projectList[index].Language = empty
+		}
 
-// 	// Find the maximum width for each column
-// 	for i := 0; i < typ.NumField(); i++ {
-// 		columnName := typ.Field(i).Name
-// 		if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
-// 			for j := 0; j < val.Len(); j++ {
-// 				fieldValue := fmt.Sprintf("%v", val.Index(j).Field(i).Interface())
-// 				fieldWidth := len(fieldValue)
-// 				if fieldWidth > columnWidths[i] {
-// 					columnWidths[i] = fieldWidth
-// 				}
-// 			}
-// 		}
-// 	}
-
-// 	// Print header
-// 	for i := 0; i < typ.NumField(); i++ {
-// 		columnName := typ.Field(i).Name
-// 		if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
-// 			fmt.Printf("%-*s", columnWidths[i]+2, columnName)
-// 		}
-// 	}
-// 	fmt.Println()
-
-// 	// Print values
-// 	for j := 0; j < val.Len(); j++ {
-// 		for i := 0; i < typ.NumField(); i++ {
-// 			columnName := typ.Field(i).Name
-// 			if len(columnsToShow) == 0 || contains(columnsToShow, columnName) {
-// 				fieldValue := fmt.Sprintf("%v", val.Index(j).Field(i).Interface())
-// 				fmt.Printf("%-*s", columnWidths[i]+2, fieldValue)
-// 			}
-// 		}
-// 		fmt.Println()
-// 	}
-// }
+	}
+	// time.Sleep(60 * time.Second)
+	return projectList
+}
 
 func printStructTable(data interface{}, selectedColumns ...string) {
 	slice := reflect.ValueOf(data)

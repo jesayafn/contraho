@@ -39,18 +39,23 @@ func projectSearch() {
 	case otheroptions["unlistedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 		projectList := ownerProject(
-			qualityGateofProject(
-				branchDetailOfProjects(
-					projectFiltering(
-						listProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						projectFiltering(
+							listProject(
+								*host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
 							*host,
 							credential,
-							lengthProjectPage,
+							0,
 							authMode,
 						),
 						*host,
 						credential,
-						0,
 						authMode,
 					),
 					*host,
@@ -76,18 +81,23 @@ func projectSearch() {
 	case otheroptions["listedApp"] == true:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 		projectList := ownerProject(
-			qualityGateofProject(
-				branchDetailOfProjects(
-					projectFiltering(
-						listProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						projectFiltering(
+							listProject(
+								*host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
 							*host,
 							credential,
-							lengthProjectPage,
+							1,
 							authMode,
 						),
 						*host,
 						credential,
-						1,
 						authMode,
 					),
 					*host,
@@ -112,12 +122,17 @@ func projectSearch() {
 	default:
 		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 		projectList := ownerProject(
-			qualityGateofProject(
-				branchDetailOfProjects(
-					listProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						listProject(
+							*host,
+							credential,
+							lengthProjectPage,
+							authMode,
+						),
 						*host,
 						credential,
-						lengthProjectPage,
 						authMode,
 					),
 					*host,

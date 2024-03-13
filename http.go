@@ -174,3 +174,29 @@ func qualityGatesGetByProjectApi(host string, projectKey string, credential stri
 	data = httpRequest(fullPath, credential, mode)
 	return data
 }
+
+func navigationComponentApi(host string, projectKey string, credential string, mode int) (data []byte) {
+	const (
+		navigationComponent = "/api/navigation/component"
+	)
+
+	queryParams := url.Values{}
+	queryParams.Set("component", projectKey)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + navigationComponent + "?" + encodedQuery
+	data = httpRequest(fullPath, credential, mode)
+	return data
+}
+
+func qualityProfilesShowApi(host string, qualityProfileKey string, credential string, mode int) (data []byte) {
+	const (
+		qualityProfilesShow = "/api/qualityprofiles/show"
+	)
+
+	queryParams := url.Values{}
+	queryParams.Set("key", qualityProfileKey)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + qualityProfilesShow + "?" + encodedQuery
+	data = httpRequest(fullPath, credential, mode)
+	return data
+}

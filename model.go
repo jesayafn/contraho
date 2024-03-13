@@ -51,6 +51,7 @@ type ProjectSearchList struct {
 	LastAnalysisDate   string
 	QualityGateId      string
 	QualityGateName    string
+	Language           string
 	// Qualifier        string
 	// Visibility       string
 	// LastAnalysisDate string
@@ -177,4 +178,66 @@ type QualityGatesGetByProject struct {
 		Name    string `json:"name"`
 		Default bool   `json:"default"`
 	} `json:"qualityGate"`
+}
+
+type NavigationComponent struct {
+	Key  string `json:"key"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Description               string `json:"description"`
+	// IsFavorite                bool   `json:"isFavorite"`
+	// CanBrowseAllChildProjects bool   `json:"canBrowseAllChildProjects"`
+	// Version                   string `json:"version"`
+	// AnalysisDate              string `json:"analysisDate"`
+	// Extensions                []struct {
+	// 	Key  string `json:"key"`
+	// 	Name string `json:"name"`
+	// } `json:"extensions"`
+	QualityProfiles []struct {
+		Key      string `json:"key"`
+		Name     string `json:"name"`
+		Language string `json:"language"`
+	} `json:"qualityProfiles"`
+	// QualityGate struct {
+	// 	Key       string `json:"key"`
+	// 	Name      string `json:"name"`
+	// 	IsDefault bool   `json:"isDefault"`
+	// } `json:"qualityGate"`
+	// Configuration struct {
+	// 	ShowSettings        bool `json:"showSettings"`
+	// 	ShowQualityProfiles bool `json:"showQualityProfiles"`
+	// 	ShowQualityGates    bool `json:"showQualityGates"`
+	// 	ShowLinks           bool `json:"showLinks"`
+	// 	ShowPermissions     bool `json:"showPermissions"`
+	// 	ShowHistory         bool `json:"showHistory"`
+	// 	ShowUpdateKey       bool `json:"showUpdateKey"`
+	// 	ShowBackgroundTasks bool `json:"showBackgroundTasks"`
+	// 	CanBrowseProject    bool `json:"canBrowseProject"`
+	// 	Extensions          []struct {
+	// 		Key  string `json:"key"`
+	// 		Name string `json:"name"`
+	// 	} `json:"extensions"`
+	// } `json:"configuration"`
+	// Breadcrumbs []struct {
+	// 	Key       string `json:"key"`
+	// 	Name      string `json:"name"`
+	// 	Qualifier string `json:"qualifier"`
+	// } `json:"breadcrumbs"`
+}
+
+type QualityProfilesShow struct {
+	Profile struct {
+		Key          string `json:"key"`
+		Name         string `json:"name"`
+		Language     string `json:"language"`
+		LanguageName string `json:"languageName"`
+		// IsInherited               bool   `json:"isInherited"`
+		// IsBuiltIn                 bool   `json:"isBuiltIn"`
+		// IsDefault                 bool   `json:"isDefault"`
+		// ActiveRuleCount           int    `json:"activeRuleCount"`
+		// ActiveDeprecatedRuleCount int    `json:"activeDeprecatedRuleCount"`
+		// ProjectCount              int    `json:"projectCount"`
+		// RulesUpdatedAt            string `json:"rulesUpdatedAt"`
+		// LastUsed                  string `json:"lastUsed"`
+	} `json:"profile"`
 }
