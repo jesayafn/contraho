@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 func main() {
@@ -23,90 +24,144 @@ func main() {
 }
 
 func projectSearch() {
-	host, username, password, fileOutput, otheroptions := arguments("project")
+	startTime := time.Now()
 
-	credential := authorizationHeader(*username, *password)
+	host, username, password, token, authMode, fileOutput, otheroptions := arguments("project")
+	var credential string
+	switch authMode {
+	case 0:
+		credential = *token
+	case 1:
+		credential = authorizationHeader(*username, *password)
+	}
 
 	switch {
 	case otheroptions["unlistedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
-
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					projectFiltering(
-						listProject(
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := ownerProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						projectFiltering(
+							listProject(
+								*host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
 							*host,
 							credential,
-							lengthProjectPage,
+							0,
+							authMode,
 						),
 						*host,
 						credential,
-						0,
+						authMode,
 					),
 					*host,
 					credential,
+					authMode,
 				),
 				*host,
 				credential,
+				authMode,
 			),
 			*host,
 			credential,
+			authMode,
 		)
 
-		projectList = qualityGateofProject(projectList, *host, credential)
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+		}
 
-		createCSVFile(*fileOutput, projectList)
 	case otheroptions["listedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := ownerProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						projectFiltering(
+							listProject(
+								*host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
+							*host,
+							credential,
+							1,
+							authMode,
+						),
+						*host,
+						credential,
+						authMode,
+					),
+					*host,
+					credential,
+					authMode,
+				),
+				*host,
+				credential,
+				authMode,
+			),
+			*host,
+			credential,
+			authMode,
+		)
 
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					projectFiltering(
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+		}
+	default:
+		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+		projectList := ownerProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
 						listProject(
 							*host,
 							credential,
 							lengthProjectPage,
+							authMode,
 						),
 						*host,
 						credential,
-						1,
+						authMode,
 					),
 					*host,
 					credential,
+					authMode,
 				),
 				*host,
 				credential,
+				authMode,
 			),
 			*host,
 			credential,
+			authMode,
 		)
-
-		createCSVFile(*fileOutput, projectList)
-	default:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK")
 
 		// fmt.Println(lengthProject)
-		projectList := applyOwnerInformation(
-			qualityGateofProject(
-				applyBranchDetail(
-					listProject(
-						*host,
-						credential,
-						lengthProjectPage,
-					),
-					*host,
-					credential,
-				),
-				*host,
-				credential,
-			),
-			*host,
-			credential,
-		)
 
-		createCSVFile(*fileOutput, projectList)
+		if *fileOutput != "" {
+			createCSVFile(*fileOutput, projectList)
+		} else {
+			// clearScreen()
+
+			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+			// printStructTable(projectList)
+		}
 	}
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 
 }
