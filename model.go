@@ -52,10 +52,12 @@ type ProjectSearchList struct {
 	QualityGateId      string
 	QualityGateName    string
 	Language           string
-	// Qualifier        string
-	// Visibility       string
-	// LastAnalysisDate string
-	// Revision         string
+	Bugs               string
+	SecurityHotspots   string
+	LineCoverage       string
+	DuplicatedLines    string
+	CodeSmells         string
+	DebtInMinute       string
 }
 
 type ProjectBranchesList struct {

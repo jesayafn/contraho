@@ -34,134 +34,64 @@ func projectSearch() {
 	case 1:
 		credential = authorizationHeader(*username, *password)
 	}
+	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 
+	var projectList []ProjectSearchList
 	switch {
 	case otheroptions["unlistedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
-			languageofProject(
-				qualityGateofProject(
-					branchDetailOfProjects(
-						projectFiltering(
-							listProject(
-								*host,
-								credential,
-								lengthProjectPage,
-								authMode,
-							),
-							*host,
-							credential,
-							0,
-							authMode,
-						),
-						*host,
-						credential,
-						authMode,
-					),
-					*host,
-					credential,
-					authMode,
-				),
-				*host,
-				credential,
-				authMode,
-			),
-			*host,
-			credential,
-			authMode,
-		)
-
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-		}
-
+		projectList = project(*host, credential, authMode, lengthProjectPage, 0)
 	case otheroptions["listedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
-			languageofProject(
-				qualityGateofProject(
-					branchDetailOfProjects(
-						projectFiltering(
-							listProject(
-								*host,
-								credential,
-								lengthProjectPage,
-								authMode,
-							),
-							*host,
-							credential,
-							1,
-							authMode,
-						),
-						*host,
-						credential,
-						authMode,
-					),
-					*host,
-					credential,
-					authMode,
-				),
-				*host,
-				credential,
-				authMode,
-			),
-			*host,
-			credential,
-			authMode,
-		)
-
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-		}
+		projectList = project(*host, credential, authMode, lengthProjectPage, 1)
 	default:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
-			languageofProject(
-				qualityGateofProject(
-					branchDetailOfProjects(
-						listProject(
-							*host,
-							credential,
-							lengthProjectPage,
-							authMode,
-						),
-						*host,
-						credential,
-						authMode,
-					),
-					*host,
-					credential,
-					authMode,
-				),
-				*host,
-				credential,
-				authMode,
-			),
-			*host,
-			credential,
-			authMode,
-		)
-
-		// fmt.Println(lengthProject)
-
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
-
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-			// printStructTable(projectList)
-		}
+		projectList = project(*host, credential, authMode, lengthProjectPage, -1)
+	}
+	if *fileOutput != "" {
+		createCSVFile(*fileOutput, projectList)
+	} else {
+		printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
 	}
 	endTime := time.Now()
 	elapsedTime := endTime.Sub(startTime).Seconds()
 
 	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 
+}
+
+func project(host string, credential string, authMode int, lengthProjectPage int, filterMode int) []ProjectSearchList {
+	return metricProject(ownerProject(
+		languageofProject(
+			qualityGateofProject(
+				branchDetailOfProjects(
+					projectFiltering(
+						listProject(
+							host,
+							credential,
+							lengthProjectPage,
+							authMode,
+						),
+						host,
+						credential,
+						filterMode,
+						authMode,
+					),
+					host,
+					credential,
+					authMode,
+				),
+				host,
+				credential,
+				authMode,
+			),
+			host,
+			credential,
+			authMode,
+		),
+		host,
+		credential,
+		authMode,
+	),
+		host,
+		credential,
+		authMode,
+	)
 }

@@ -351,6 +351,7 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 		projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
 	case 1:
 		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
+	default:
 	}
 
 	displayJob("project filtering", "end")
@@ -382,7 +383,8 @@ func qualityGateofProject(projectList []ProjectSearchList, host string, credenti
 }
 
 func languageofProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
-
+	displayJob("obtain language of project", "start")
+	go displayLoading(loadingCh)
 	const empty = `-`
 
 	for index := range projectList {
@@ -412,8 +414,50 @@ func languageofProject(projectList []ProjectSearchList, host string, credential 
 		}
 
 	}
-	// time.Sleep(60 * time.Second)
+	displayJob("obtain language of project", "end")
 	return projectList
+}
+
+func metricProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
+	displayJob("obtain metric of projects", "start")
+	go displayLoading(loadingCh)
+	metrics := []string{
+		"bugs", "security_hotspots",
+		"line_coverage", "duplicated_lines",
+		"code_smells", "sqale_index"}
+	for index := range projectList {
+
+		raw := measuresComponentApi(host,
+			projectList[index].Key,
+			projectList[index].Branch,
+			strings.Join(metrics, ", "),
+			credential, authMode)
+		var structured ProjectMeasures
+
+		err := dataParse(raw, &structured)
+		handleErr(err)
+		// fmt.Println(strings.Join(metrics, ","))
+		for _, measures := range structured.Component.Measures {
+			switch measures.Metric {
+			case "bugs":
+				projectList[index].Bugs = measures.Value
+			case "security_hotspots":
+				projectList[index].SecurityHotspots = measures.Value
+			case "line_coverage":
+				projectList[index].LineCoverage = measures.Value
+			case "duplicated_lines":
+				projectList[index].DuplicatedLines = measures.Value
+			case "code_smells":
+				projectList[index].CodeSmells = measures.Value
+			case "sqale_index":
+				projectList[index].DebtInMinute = measures.Value
+			}
+		}
+
+	}
+	displayJob("obtain metric of projects", "end")
+	return projectList
+
 }
 
 func printStructTable(data interface{}, selectedColumns ...string) {

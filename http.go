@@ -96,6 +96,7 @@ func measuresComponentApi(host string, projectKey string, branch string, metricK
 	queryParams.Add("branch", branch)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + measuresComponent + "?" + encodedQuery
+	// fmt.Println(fullPath)
 
 	data = httpRequest(fullPath, credential, mode)
 
@@ -197,6 +198,23 @@ func qualityProfilesShowApi(host string, qualityProfileKey string, credential st
 	queryParams.Set("key", qualityProfileKey)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + qualityProfilesShow + "?" + encodedQuery
+	data = httpRequest(fullPath, credential, mode)
+	return data
+}
+
+func measuresSearchHistoryApi(host string, projectKey string, branch string, metrics string, dateFrom string, dateTo string,
+	credential string, mode int) (data []byte) {
+	const (
+		measuresSearchHistory = "/api/measures/search_history"
+	)
+	queryParams := url.Values{}
+	queryParams.Set("component", projectKey)
+	queryParams.Set("branch", branch)
+	queryParams.Set("metrics", metrics)
+	queryParams.Set("from", dateFrom)
+	queryParams.Set("to", dateTo)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + measuresSearchHistory + "?" + encodedQuery
 	data = httpRequest(fullPath, credential, mode)
 	return data
 }
