@@ -60,6 +60,21 @@ type ProjectSearchList struct {
 	DebtInMinute       string
 }
 
+type AppList struct {
+	Key              string
+	Name             string
+	Owner            string
+	Email            string
+	Language         string
+	Loc              string
+	Bugs             string
+	SecurityHotspots string
+	LineCoverage     string
+	DuplicatedLines  string
+	CodeSmells       string
+	DebtInMinute     string
+}
+
 type ProjectBranchesList struct {
 	Branches []struct {
 		Name   string `json:"name"`

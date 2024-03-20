@@ -15,8 +15,10 @@ func main() {
 	subcommand := os.Args[1]
 
 	switch subcommand {
-	case "project":
+	case "project", "proj", "p":
 		projectSearch()
+	case "application", "app", "a":
+		appSearch()
 	default:
 		fmt.Println("Invalid subcommand:", subcommand)
 		os.Exit(1)
@@ -26,14 +28,8 @@ func main() {
 func projectSearch() {
 	startTime := time.Now()
 
-	host, username, password, token, authMode, fileOutput, otheroptions := arguments("project")
-	var credential string
-	switch authMode {
-	case 0:
-		credential = *token
-	case 1:
-		credential = authorizationHeader(*username, *password)
-	}
+	host, credential, authMode, fileOutput, otheroptions := arguments(0)
+
 	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 
 	var projectList []ProjectSearchList
@@ -58,20 +54,25 @@ func projectSearch() {
 }
 
 func project(host string, credential string, authMode int, lengthProjectPage int, filterMode int) []ProjectSearchList {
-	return metricProject(ownerProject(
-		languageofProject(
-			qualityGateofProject(
-				branchDetailOfProjects(
-					projectFiltering(
-						listProject(
+	return metricProject(
+		ownerProject(
+			languageofProject(
+				qualityGateofProject(
+					branchDetailOfProjects(
+						projectFiltering(
+							listProject(
+								host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
 							host,
 							credential,
-							lengthProjectPage,
+							filterMode,
 							authMode,
 						),
 						host,
 						credential,
-						filterMode,
 						authMode,
 					),
 					host,
@@ -85,13 +86,33 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 			host,
 			credential,
 			authMode,
-		),
+		).([]ProjectSearchList),
 		host,
 		credential,
 		authMode,
-	),
-		host,
-		credential,
-		authMode,
-	)
+	).([]ProjectSearchList)
+}
+
+func appSearch() {
+	host, credential, authMode, fileOutput, _ := arguments(1)
+
+	lengthAppPage := projectSearchApiLength(*host, credential, "APP", authMode)
+
+	appListInterface := listApp(*host, credential, lengthAppPage, authMode, 1)
+
+	// Type assertion to convert the interface to []AppList
+	appList, ok := appListInterface.([]AppList)
+	if !ok {
+		// Handle the case where the returned value is not []AppList
+		fmt.Println("Error: Unexpected return type from listApp")
+		return
+	}
+	appList = languageofApp(appList, *host, credential, authMode)
+	appList = ownerProject(appList, *host, credential, authMode).([]AppList)
+	appList = metricProject(appList, *host, credential, authMode).([]AppList)
+	if *fileOutput != "" {
+		createCSVFile(*fileOutput, appList)
+	} else {
+		printStructTable(appList, "Key", "Name", "Loc")
+	}
 }
