@@ -29,7 +29,10 @@ func listApp(host string, credential string, lengthProject int, authMode int, li
 			for projectIndex := range structured.Components {
 				applicationListforProject = append(applicationListforProject, structured.Components[projectIndex].Key)
 			}
+			loadingCh <- true
+			displayJob("list app", "end")
 			return applicationListforProject
+
 		case 1:
 			for projectIndex := range structured.Components {
 				applicationList = append(applicationList, AppList{
@@ -37,12 +40,12 @@ func listApp(host string, credential string, lengthProject int, authMode int, li
 					Name: structured.Components[projectIndex].Name,
 				})
 			}
+			loadingCh <- true
+			displayJob("list app", "end")
 			return applicationList
 		}
 
 	}
-	loadingCh <- true
-	displayJob("list app", "end")
 	return nil
 }
 
@@ -95,6 +98,8 @@ func languageofApp(appList []AppList, host string, credential string, authMode i
 		appList[indexApp].Language = strings.Join(languageofProjectonApp, ", ")
 
 	}
+	loadingCh <- true
+
 	displayJob("obtain language of project", "end")
 	return appList
 }

@@ -74,7 +74,7 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 						host,
 						credential,
 						authMode,
-					),
+					).([]ProjectSearchList),
 					host,
 					credential,
 					authMode,
@@ -94,6 +94,8 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 }
 
 func appSearch() {
+	startTime := time.Now()
+
 	host, credential, authMode, fileOutput, _ := arguments(1)
 
 	lengthAppPage := projectSearchApiLength(*host, credential, "APP", authMode)
@@ -109,10 +111,17 @@ func appSearch() {
 	}
 	appList = languageofApp(appList, *host, credential, authMode)
 	appList = ownerProject(appList, *host, credential, authMode).([]AppList)
+	appList = branchDetailOfProjects(appList, *host, credential, authMode).([]AppList)
 	appList = metricProject(appList, *host, credential, authMode).([]AppList)
+
 	if *fileOutput != "" {
 		createCSVFile(*fileOutput, appList)
 	} else {
 		printStructTable(appList, "Key", "Name", "Loc")
 	}
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+
 }

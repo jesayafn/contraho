@@ -145,35 +145,99 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 
 	return latestDateIndex, nil
 }
-func branchDetailOfProjects(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
-	// fmt.Println("Gather Branch Detail")
-
+func branchDetailOfProjects(projectList interface{}, host string, credential string, authMode int) interface{} {
+	// Type assertion to determine the type of projectList
 	displayJob("obtain branch data", "start")
 	go displayLoading(loadingCh)
 
-	for index := range projectList {
-		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
-		raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
-		var structured ProjectBranchesList
-		err := dataParse(raw, &structured)
+	switch projectList := projectList.(type) {
+	case []ProjectSearchList:
+		// Handle ProjectSearchList type
 
-		handleErr(err)
-		var (
-			compareNloc     []int
-			loc             int
-			lastDate        string
-			compareLastDate []string
-		)
-		for branchIndex := range structured.Branches {
-			// nlocRaw := httpRequest(
-			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-			// 	credential)
+		for index := range projectList {
+			raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
+			var structured ProjectBranchesList
+			err := dataParse(raw, &structured)
+
+			handleErr(err)
+			var (
+				compareNloc     []int
+				loc             int
+				lastDate        string
+				compareLastDate []string
+			)
+
+			for branchIndex := range structured.Branches {
+				nlocRaw := measuresComponentApi(host, projectList[index].Key,
+					structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
+
+				var nlocStructured ProjectMeasures
+
+				err := dataParse(nlocRaw, &nlocStructured)
+				handleErr(err)
+
+				if len(nlocStructured.Component.Measures) == 0 {
+					loc = 0
+				} else {
+					loc, err = strconv.Atoi(nlocStructured.Component.Measures[0].Value)
+					handleErr(err)
+				}
+				compareNloc = append(compareNloc, loc)
+
+				lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
+					structured.Branches[branchIndex].Name, credential, authMode)
+
+				var lastDateStructured ProjectAnalyses
+				err = dataParse(lastDateRaw, &lastDateStructured)
+				handleErr(err)
+
+				if len(lastDateStructured.Analyses) == 0 {
+					lastDate = "0001-01-01T00:00:00+0000"
+				} else {
+					lastDate = lastDateStructured.Analyses[0].Date
+				}
+
+				compareLastDate = append(compareLastDate, lastDate)
+			}
+
+			branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
+			lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
+			handleErr(err)
+
+			projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
+			projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
+			projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
+			projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
+		}
+		loadingCh <- true
+		displayJob("obtain branch data", "end")
+		return projectList
+	case []AppList:
+		// Handle AppList type
+
+		for index := range projectList {
+			raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
+			var structured ProjectBranchesList
+			err := dataParse(raw, &structured)
+			handleErr(err)
+
+			var (
+				mainBranch string
+				loc        int
+			)
+
+			for _, branch := range structured.Branches {
+				if branch.IsMain {
+					mainBranch = branch.Name
+					break
+				}
+			}
 			nlocRaw := measuresComponentApi(host, projectList[index].Key,
-				structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
+				mainBranch, "ncloc", credential, authMode)
 
 			var nlocStructured ProjectMeasures
 
-			err := dataParse(nlocRaw, &nlocStructured)
+			err = dataParse(nlocRaw, &nlocStructured)
 			handleErr(err)
 
 			if len(nlocStructured.Component.Measures) == 0 {
@@ -182,45 +246,16 @@ func branchDetailOfProjects(projectList []ProjectSearchList, host string, creden
 				loc, err = strconv.Atoi(nlocStructured.Component.Measures[0].Value)
 				handleErr(err)
 			}
-			compareNloc = append(compareNloc, loc)
-
-			// lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-			// 	credential)
-			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
-				structured.Branches[branchIndex].Name, credential, authMode)
-
-			var lastDateStructured ProjectAnalyses
-			err = dataParse(lastDateRaw, &lastDateStructured)
-			handleErr(err)
-
-			if len(lastDateStructured.Analyses) == 0 {
-				lastDate = "0001-01-01T00:00:00+0000"
-			} else {
-				lastDate = lastDateStructured.Analyses[0].Date
-			}
-
-			compareLastDate = append(compareLastDate, lastDate)
+			projectList[index].MainBranch = mainBranch
+			projectList[index].Loc = strconv.Itoa(loc)
 		}
-		// fmt.Println(projectList[index].Key, compareLastDate)
-		branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
-		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
-		handleErr(err)
-		// projectList[index] = ProjectSearchList{
-		// 	HighestLinesOfCodeBranch: structured.Branches[branchCalculatedNloc].Name,
-		// 	LinesOfCode:              strconv.Itoa(compareNloc[branchCalculatedNloc]),
-		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
-		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
-		// }
-		projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
-		projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
-		projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
-		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
-
+		loadingCh <- true
+		displayJob("obtain branch data", "end")
+		return projectList
+	default:
+		// Handle unsupported types
+		panic("unsupported type for projectList")
 	}
-	loadingCh <- true
-	displayJob("obtain branch data", "end")
-
-	return projectList
 }
 
 func ownerProject(projectList interface{}, host string, credential string, authMode int) interface{} {
@@ -438,7 +473,8 @@ func metricProject(projectList interface{}, host string, credential string, auth
 			branch = branchField.Interface().(string)
 		} else if element.Type().Name() == "AppList" {
 			// If it's an AppList, use default branch "main"
-			branch = "main"
+			branchField := element.FieldByName("MainBranch")
+			branch = branchField.Interface().(string)
 		}
 
 		var structured ProjectMeasures

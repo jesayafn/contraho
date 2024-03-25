@@ -63,6 +63,7 @@ type ProjectSearchList struct {
 type AppList struct {
 	Key              string
 	Name             string
+	MainBranch       string
 	Owner            string
 	Email            string
 	Language         string
