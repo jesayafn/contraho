@@ -350,22 +350,32 @@ func listProjectofApplication(host string, projectListed []string, applicationKe
 
 }
 
-func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int, authMode int) []ProjectSearchList {
+func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int, authMode int, appName string) []ProjectSearchList {
 	displayJob("project filtering", "start")
 	go displayLoading(loadingCh)
+	const (
+		emptyString = ""
+	)
+	var listedProjectOnApp, applicationList []string
+	var ok bool
 
-	lengthAppPage := projectSearchApiLength(host, credential, "APP", authMode)
+	if appName == emptyString {
+		lengthAppPage := projectSearchApiLength(host, credential, "APP", authMode)
 
-	applicationListInterface := listApp(host, credential, lengthAppPage, authMode, 0)
+		applicationListInterface := listApp(host, credential, lengthAppPage, authMode, 0)
 
-	// Type assertion to convert the interface to []string
-	applicationList, ok := applicationListInterface.([]string)
-	if !ok {
-		// Handle the case where the returned value is not []string
-		fmt.Println("Error: Unexpected return type from listApp")
-		return projectList
+		// Type assertion to convert the interface to []string
+		applicationList, ok = applicationListInterface.([]string)
+		if !ok {
+			// Handle the case where the returned value is not []string
+			fmt.Println("Error: Unexpected return type from listApp")
+			return projectList
+		}
+
+	} else {
+		applicationList = strings.Split(appName, ",")
 	}
-	var listedProjectOnApp []string
+
 	for i := range applicationList {
 		lengthProjectOfAppPage := applicationProjectSearchApiLength(host, applicationList[i], credential, authMode)
 		// fmt.Println(lengthProjectOfAppPage)
@@ -373,8 +383,18 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 			lengthProjectOfAppPage, credential, authMode)
 		// fmt.Println(lisedProjectOnApp)
 	}
+	// else {
+	// 	lengthProjectOfAppPage := applicationProjectSearchApiLength(host, appName, credential, authMode)
+	// 	// fmt.Println(lengthProjectOfAppPage)
+	// 	listedProjectOnApp = listProjectofApplication(host, listedProjectOnApp, appName,
+	// 		lengthProjectOfAppPage, credential, authMode)
+	// }
+
+	// fmt.Println(listedProjectOnApp, appName)
 
 	listedProjectOnApp = removeRedundantValues(listedProjectOnApp)
+
+	// time.Sleep(1 * time.Minute)
 
 	// fmt.Println(lisedProjectOnApp)
 	switch option {
@@ -384,7 +404,8 @@ func projectFiltering(projectList []ProjectSearchList, host string, credential s
 		projectList = keepProjectsByKeys(projectList, listedProjectOnApp)
 	default:
 	}
-
+	// loadingCh <- true
+	loadingCh <- true
 	displayJob("project filtering", "end")
 
 	return projectList
@@ -408,6 +429,7 @@ func qualityGateofProject(projectList []ProjectSearchList, host string, credenti
 		projectList[index].QualityGateName = structured.QualityGate.Name
 
 	}
+	loadingCh <- true
 	displayJob("obtain quality gate data", "end")
 
 	return projectList
@@ -420,7 +442,7 @@ func languageofProject(projectList []ProjectSearchList, host string, credential 
 
 	for index := range projectList {
 		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
-		raw := navigationComponentApi(host, projectList[index].Key, credential, authMode)
+		raw := navigationComponentApi(host, projectList[index].Key, projectList[index].Branch, credential, authMode)
 		var structured NavigationComponent
 		err := dataParse(raw, &structured)
 		handleErr(err)
@@ -445,6 +467,8 @@ func languageofProject(projectList []ProjectSearchList, host string, credential 
 		}
 
 	}
+	loadingCh <- true
+
 	displayJob("obtain language of project", "end")
 	return projectList
 }
@@ -499,7 +523,7 @@ func metricProject(projectList interface{}, host string, credential string, auth
 			}
 		}
 	}
-
+	loadingCh <- true
 	displayJob("obtain metric of projects", "end")
 	return projectList
 }

@@ -28,6 +28,7 @@ func arguments(subcommand int) (host *string,
 
 		unlistedApp := flagSet.Bool("unlisted-on-app", false, "List only not listed projects on any application")
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
+		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
@@ -61,6 +62,7 @@ func arguments(subcommand int) (host *string,
 
 		additionalOptions["unlistedApp"] = *unlistedApp
 		additionalOptions["listedApp"] = *listedApp
+		additionalOptions["app"] = *app
 		// fmt.Println(*unlistedApp)
 	case 1:
 		flagSet.Parse(os.Args[2:])

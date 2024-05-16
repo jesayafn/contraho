@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	emptyString = ""
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: contraho <subcommand> [options]")
@@ -28,18 +32,20 @@ func main() {
 func projectSearch() {
 	startTime := time.Now()
 
-	host, credential, authMode, fileOutput, otheroptions := arguments(0)
+	host, credential, authMode, fileOutput, otherOptions := arguments(0)
 
 	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 
 	var projectList []ProjectSearchList
 	switch {
-	case otheroptions["unlistedApp"] == true:
-		projectList = project(*host, credential, authMode, lengthProjectPage, 0)
-	case otheroptions["listedApp"] == true:
-		projectList = project(*host, credential, authMode, lengthProjectPage, 1)
+	case otherOptions["unlistedApp"] == true:
+		projectList = project(*host, credential, authMode, lengthProjectPage, 0, emptyString)
+	case otherOptions["listedApp"] == true:
+		projectList = project(*host, credential, authMode, lengthProjectPage, 1, emptyString)
+	case otherOptions["app"] != "":
+		projectList = project(*host, credential, authMode, lengthProjectPage, 1, otherOptions["app"].(string))
 	default:
-		projectList = project(*host, credential, authMode, lengthProjectPage, -1)
+		projectList = project(*host, credential, authMode, lengthProjectPage, -1, emptyString)
 	}
 	if *fileOutput != "" {
 		createCSVFile(*fileOutput, projectList)
@@ -53,7 +59,7 @@ func projectSearch() {
 
 }
 
-func project(host string, credential string, authMode int, lengthProjectPage int, filterMode int) []ProjectSearchList {
+func project(host string, credential string, authMode int, lengthProjectPage int, filterMode int, appName string) []ProjectSearchList {
 	return metricProject(
 		ownerProject(
 			languageofProject(
@@ -70,6 +76,7 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 							credential,
 							filterMode,
 							authMode,
+							appName,
 						),
 						host,
 						credential,

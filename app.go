@@ -7,9 +7,10 @@ import (
 
 func listApp(host string, credential string, lengthProject int, authMode int, listMode int) interface{} {
 
-	displayJob("list app", "start")
-	go displayLoading(loadingCh)
-
+	if listMode == 1 {
+		displayJob("list app", "start")
+		go displayLoading(loadingCh)
+	}
 	var applicationListforProject []string
 	var applicationList []AppList
 	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
@@ -29,8 +30,6 @@ func listApp(host string, credential string, lengthProject int, authMode int, li
 			for projectIndex := range structured.Components {
 				applicationListforProject = append(applicationListforProject, structured.Components[projectIndex].Key)
 			}
-			loadingCh <- true
-			displayJob("list app", "end")
 			return applicationListforProject
 
 		case 1:
@@ -41,11 +40,13 @@ func listApp(host string, credential string, lengthProject int, authMode int, li
 				})
 			}
 			loadingCh <- true
+
 			displayJob("list app", "end")
 			return applicationList
 		}
 
 	}
+
 	return nil
 }
 
@@ -63,7 +64,7 @@ func languageofApp(appList []AppList, host string, credential string, authMode i
 
 		for indexProject := range listedProjectOnApp {
 			// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
-			raw := navigationComponentApi(host, listedProjectOnApp[indexProject], credential, authMode)
+			raw := navigationComponentApi(host, listedProjectOnApp[indexProject], appList[indexApp].MainBranch, credential, authMode)
 			var structured NavigationComponent
 			err := dataParse(raw, &structured)
 			handleErr(err)
@@ -98,8 +99,6 @@ func languageofApp(appList []AppList, host string, credential string, authMode i
 		appList[indexApp].Language = strings.Join(languageofProjectonApp, ", ")
 
 	}
-	loadingCh <- true
-
 	displayJob("obtain language of project", "end")
 	return appList
 }

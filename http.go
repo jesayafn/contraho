@@ -176,13 +176,14 @@ func qualityGatesGetByProjectApi(host string, projectKey string, credential stri
 	return data
 }
 
-func navigationComponentApi(host string, projectKey string, credential string, mode int) (data []byte) {
+func navigationComponentApi(host string, projectKey string, branch string, credential string, mode int) (data []byte) {
 	const (
 		navigationComponent = "/api/navigation/component"
 	)
 
 	queryParams := url.Values{}
 	queryParams.Set("component", projectKey)
+	queryParams.Set("branch", branch)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + navigationComponent + "?" + encodedQuery
 	data = httpRequest(fullPath, credential, mode)
