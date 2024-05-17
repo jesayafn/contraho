@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 func arguments(subcommand int) (host *string,
@@ -50,6 +51,20 @@ func arguments(subcommand int) (host *string,
 		err := dataParse(raw, &sonarqubeInfo)
 
 		handleErr(err)
+		appArray := strings.Split(*app, ",")
+		// fmt.Println(appArray)
+		var notFounded []string
+		for index := range appArray {
+			_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
+			if checkStatusCode == 404 {
+				notFounded = append(notFounded, appArray[index])
+			}
+		}
+		if len(notFounded) >= 1 {
+			fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFounded, ", "))
+			os.Exit(1)
+		}
+
 		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
 			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
 			os.Exit(1)
