@@ -112,6 +112,7 @@ func projectAnalysesSearchApi(host string, size int, pageNumber int, projectKey 
 	queryParams := url.Values{}
 	queryParams.Add("ps", fmt.Sprintf("%d", size))
 	queryParams.Add("p", fmt.Sprintf("%d", pageNumber))
+	queryParams.Add("branch", branch)
 	queryParams.Add("project", projectKey)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + projectAnalysesSearch + "?" + encodedQuery
