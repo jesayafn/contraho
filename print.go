@@ -26,8 +26,8 @@ func printStructTable(data interface{}, selectedColumns ...string) {
 	// printValues(slice, columnWidths, selectedColumns)
 	var pagerCmd *exec.Cmd
 	switch runtime.GOOS {
-	case "windows":
-		pagerCmd = exec.Command("more")
+	// case "windows":
+	// 	pagerCmd = exec.Command("more")
 	case "darwin", "linux":
 		pagerCmd = exec.Command("less")
 	default:
