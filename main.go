@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+const (
+	emptyString = ""
+)
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: contraho <subcommand> [options]")
@@ -15,8 +19,10 @@ func main() {
 	subcommand := os.Args[1]
 
 	switch subcommand {
-	case "project":
+	case "project", "proj", "p":
 		projectSearch()
+	case "application", "app", "a":
+		appSearch()
 	default:
 		fmt.Println("Invalid subcommand:", subcommand)
 		os.Exit(1)
@@ -26,138 +32,99 @@ func main() {
 func projectSearch() {
 	startTime := time.Now()
 
-	host, username, password, token, authMode, fileOutput, otheroptions := arguments("project")
-	var credential string
-	switch authMode {
-	case 0:
-		credential = *token
-	case 1:
-		credential = authorizationHeader(*username, *password)
-	}
+	host, credential, authMode, fileOutput, otherOptions := arguments(0)
 
+	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
+
+	var projectList []ProjectSearchList
 	switch {
-	case otheroptions["unlistedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
-			languageofProject(
-				qualityGateofProject(
-					branchDetailOfProjects(
-						projectFiltering(
-							listProject(
-								*host,
-								credential,
-								lengthProjectPage,
-								authMode,
-							),
-							*host,
-							credential,
-							0,
-							authMode,
-						),
-						*host,
-						credential,
-						authMode,
-					),
-					*host,
-					credential,
-					authMode,
-				),
-				*host,
-				credential,
-				authMode,
-			),
-			*host,
-			credential,
-			authMode,
-		)
-
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-		}
-
-	case otheroptions["listedApp"] == true:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
-			languageofProject(
-				qualityGateofProject(
-					branchDetailOfProjects(
-						projectFiltering(
-							listProject(
-								*host,
-								credential,
-								lengthProjectPage,
-								authMode,
-							),
-							*host,
-							credential,
-							1,
-							authMode,
-						),
-						*host,
-						credential,
-						authMode,
-					),
-					*host,
-					credential,
-					authMode,
-				),
-				*host,
-				credential,
-				authMode,
-			),
-			*host,
-			credential,
-			authMode,
-		)
-
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-		}
+	case otherOptions["unlistedApp"] == true:
+		projectList = project(*host, credential, authMode, lengthProjectPage, 0, emptyString)
+	case otherOptions["listedApp"] == true:
+		projectList = project(*host, credential, authMode, lengthProjectPage, 1, emptyString)
+	case otherOptions["app"] != "":
+		projectList = project(*host, credential, authMode, lengthProjectPage, 1, otherOptions["app"].(string))
 	default:
-		lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
-		projectList := ownerProject(
+		projectList = project(*host, credential, authMode, lengthProjectPage, -1, emptyString)
+	}
+	if *fileOutput != "" {
+		createCSVFile(*fileOutput, projectList)
+	} else {
+		printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+	}
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+
+}
+
+func project(host string, credential string, authMode int, lengthProjectPage int, filterMode int, appName string) []ProjectSearchList {
+	return metricProject(
+		ownerProject(
 			languageofProject(
 				qualityGateofProject(
 					branchDetailOfProjects(
-						listProject(
-							*host,
+						projectFiltering(
+							listProject(
+								host,
+								credential,
+								lengthProjectPage,
+								authMode,
+							),
+							host,
 							credential,
-							lengthProjectPage,
+							filterMode,
 							authMode,
+							appName,
 						),
-						*host,
+						host,
 						credential,
 						authMode,
-					),
-					*host,
+					).([]ProjectSearchList),
+					host,
 					credential,
 					authMode,
 				),
-				*host,
+				host,
 				credential,
 				authMode,
 			),
-			*host,
+			host,
 			credential,
 			authMode,
-		)
+		).([]ProjectSearchList),
+		host,
+		credential,
+		authMode,
+	).([]ProjectSearchList)
+}
 
-		// fmt.Println(lengthProject)
+func appSearch() {
+	startTime := time.Now()
 
-		if *fileOutput != "" {
-			createCSVFile(*fileOutput, projectList)
-		} else {
-			// clearScreen()
+	host, credential, authMode, fileOutput, _ := arguments(1)
 
-			printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
-			// printStructTable(projectList)
-		}
+	lengthAppPage := projectSearchApiLength(*host, credential, "APP", authMode)
+
+	appListInterface := listApp(*host, credential, lengthAppPage, authMode, 1)
+
+	// Type assertion to convert the interface to []AppList
+	appList, ok := appListInterface.([]AppList)
+	if !ok {
+		// Handle the case where the returned value is not []AppList
+		fmt.Println("Error: Unexpected return type from listApp")
+		return
+	}
+	appList = languageofApp(appList, *host, credential, authMode)
+	appList = ownerProject(appList, *host, credential, authMode).([]AppList)
+	appList = branchDetailOfProjects(appList, *host, credential, authMode).([]AppList)
+	appList = metricProject(appList, *host, credential, authMode).([]AppList)
+
+	if *fileOutput != "" {
+		createCSVFile(*fileOutput, appList)
+	} else {
+		printStructTable(appList, "Key", "Name", "Loc")
 	}
 	endTime := time.Now()
 	elapsedTime := endTime.Sub(startTime).Seconds()

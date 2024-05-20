@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -146,35 +145,99 @@ func findIndexOfLatestDate(dateStrings []string) (int, error) {
 
 	return latestDateIndex, nil
 }
-func branchDetailOfProjects(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
-	// fmt.Println("Gather Branch Detail")
-
+func branchDetailOfProjects(projectList interface{}, host string, credential string, authMode int) interface{} {
+	// Type assertion to determine the type of projectList
 	displayJob("obtain branch data", "start")
 	go displayLoading(loadingCh)
 
-	for index := range projectList {
-		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
-		raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
-		var structured ProjectBranchesList
-		err := dataParse(raw, &structured)
+	switch projectList := projectList.(type) {
+	case []ProjectSearchList:
+		// Handle ProjectSearchList type
 
-		handleErr(err)
-		var (
-			compareNloc     []int
-			loc             int
-			lastDate        string
-			compareLastDate []string
-		)
-		for branchIndex := range structured.Branches {
-			// nlocRaw := httpRequest(
-			// 	host+ProjectBranchesLocApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-			// 	credential)
+		for index := range projectList {
+			raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
+			var structured ProjectBranchesList
+			err := dataParse(raw, &structured)
+
+			handleErr(err)
+			var (
+				compareNloc     []int
+				loc             int
+				lastDate        string
+				compareLastDate []string
+			)
+
+			for branchIndex := range structured.Branches {
+				nlocRaw := measuresComponentApi(host, projectList[index].Key,
+					structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
+
+				var nlocStructured ProjectMeasures
+
+				err := dataParse(nlocRaw, &nlocStructured)
+				handleErr(err)
+
+				if len(nlocStructured.Component.Measures) == 0 {
+					loc = 0
+				} else {
+					loc, err = strconv.Atoi(nlocStructured.Component.Measures[0].Value)
+					handleErr(err)
+				}
+				compareNloc = append(compareNloc, loc)
+
+				lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
+					structured.Branches[branchIndex].Name, credential, authMode)
+
+				var lastDateStructured ProjectAnalyses
+				err = dataParse(lastDateRaw, &lastDateStructured)
+				handleErr(err)
+
+				if len(lastDateStructured.Analyses) == 0 {
+					lastDate = "0001-01-01T00:00:00+0000"
+				} else {
+					lastDate = lastDateStructured.Analyses[0].Date
+				}
+
+				compareLastDate = append(compareLastDate, lastDate)
+			}
+
+			branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
+			lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
+			handleErr(err)
+
+			projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
+			projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
+			projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
+			projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
+		}
+		loadingCh <- true
+		displayJob("obtain branch data", "end")
+		return projectList
+	case []AppList:
+		// Handle AppList type
+
+		for index := range projectList {
+			raw := projectBranchesListApi(host, projectList[index].Key, credential, authMode)
+			var structured ProjectBranchesList
+			err := dataParse(raw, &structured)
+			handleErr(err)
+
+			var (
+				mainBranch string
+				loc        int
+			)
+
+			for _, branch := range structured.Branches {
+				if branch.IsMain {
+					mainBranch = branch.Name
+					break
+				}
+			}
 			nlocRaw := measuresComponentApi(host, projectList[index].Key,
-				structured.Branches[branchIndex].Name, "ncloc", credential, authMode)
+				mainBranch, "ncloc", credential, authMode)
 
 			var nlocStructured ProjectMeasures
 
-			err := dataParse(nlocRaw, &nlocStructured)
+			err = dataParse(nlocRaw, &nlocStructured)
 			handleErr(err)
 
 			if len(nlocStructured.Component.Measures) == 0 {
@@ -183,56 +246,39 @@ func branchDetailOfProjects(projectList []ProjectSearchList, host string, creden
 				loc, err = strconv.Atoi(nlocStructured.Component.Measures[0].Value)
 				handleErr(err)
 			}
-			compareNloc = append(compareNloc, loc)
-
-			// lastDateRaw := httpRequest(host+ProjectDateAnalysisApi+projectList[index].Key+"&branch="+structured.Branches[branchIndex].Name,
-			// 	credential)
-			lastDateRaw := projectAnalysesSearchApi(host, 1, 1, projectList[index].Key,
-				structured.Branches[branchIndex].Name, credential, authMode)
-
-			var lastDateStructured ProjectAnalyses
-			err = dataParse(lastDateRaw, &lastDateStructured)
-			handleErr(err)
-
-			if len(lastDateStructured.Analyses) == 0 {
-				lastDate = "0001-01-01T00:00:00+0000"
-			} else {
-				lastDate = lastDateStructured.Analyses[0].Date
-			}
-
-			compareLastDate = append(compareLastDate, lastDate)
+			projectList[index].MainBranch = mainBranch
+			projectList[index].Loc = strconv.Itoa(loc)
 		}
-		// fmt.Println(projectList[index].Key, compareLastDate)
-		branchCalculatedNloc := findIndexOfHighestValue(compareNloc)
-		lastAnalysisDate, err := findIndexOfLatestDate(compareLastDate)
-		handleErr(err)
-		// projectList[index] = ProjectSearchList{
-		// 	HighestLinesOfCodeBranch: structured.Branches[branchCalculatedNloc].Name,
-		// 	LinesOfCode:              strconv.Itoa(compareNloc[branchCalculatedNloc]),
-		// 	LastAnalysisDate:         compareLastDate[lastAnalysisDate],
-		// 	LastAnalysisBranch:       structured.Branches[lastAnalysisDate].Name,
-		// }
-		projectList[index].Branch = structured.Branches[branchCalculatedNloc].Name
-		projectList[index].Loc = strconv.Itoa(compareNloc[branchCalculatedNloc])
-		projectList[index].LastAnalysisDate = compareLastDate[lastAnalysisDate]
-		projectList[index].LastAnalysisBranch = structured.Branches[lastAnalysisDate].Name
-
+		loadingCh <- true
+		displayJob("obtain branch data", "end")
+		return projectList
+	default:
+		// Handle unsupported types
+		panic("unsupported type for projectList")
 	}
-	loadingCh <- true
-	displayJob("obtain branch data", "end")
-
-	return projectList
 }
 
-func ownerProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
+func ownerProject(projectList interface{}, host string, credential string, authMode int) interface{} {
 	// fmt.Println("Owner func")
 
 	displayJob("obtain project owner", "start")
 	go displayLoading(loadingCh)
-
-	for index := range projectList {
+	sliceValue := reflect.ValueOf(projectList)
+	if sliceValue.Kind() != reflect.Slice {
+		panic("Input is not a slice")
+	}
+	for index := 0; index < sliceValue.Len(); index++ {
 		// raw := httpRequest(host+ProjectUserPermissionsApi+projectList[index].Key, credential)
-		raw := permissionUsersApi(host, projectList[index].Key, credential, authMode)
+		element := sliceValue.Index(index)
+		keyField := element.FieldByName("Key")
+		if !keyField.IsValid() {
+			panic("Key field not found")
+		}
+		key := keyField.Interface().(string)
+		if !keyField.IsValid() {
+			panic("Key field not found")
+		}
+		raw := permissionUsersApi(host, key, credential, authMode)
 		var structured ProjectPermissions
 
 		err := dataParse(raw, &structured)
@@ -243,8 +289,13 @@ func ownerProject(projectList []ProjectSearchList, host string, credential strin
 		// 	Owner: structured.Users[0].Name,
 		// 	Email: structured.Users[0].Email,
 		// }
-		projectList[index].Owner = structured.Users[0].Name
-		projectList[index].Email = structured.Users[0].Email
+		ownerField := element.FieldByName("Owner")
+		emailField := element.FieldByName("Email")
+		if !ownerField.IsValid() || !emailField.IsValid() {
+			panic("Owner or Email field not found")
+		}
+		ownerField.SetString(structured.Users[0].Name)
+		emailField.SetString(structured.Users[0].Email)
 
 	}
 	loadingCh <- true
@@ -259,34 +310,6 @@ func handleErr(err error) {
 }
 
 // Just hold array of the project key of application
-func listApp(host string, credential string, lengthProject int, authMode int) []string {
-
-	displayJob("list app", "start")
-	go displayLoading(loadingCh)
-
-	var applicationList []string
-	for pageIndex := 1; pageIndex <= lengthProject; pageIndex++ {
-		// raw := httpRequest(host+projectScrapeApi+strconv.Itoa(pageIndex),
-		// 	credential)
-		raw := projectSearchApi(host, "APP", 500, pageIndex, credential, authMode)
-
-		var structured ProjectSearchPage
-
-		err := dataParse(raw, &structured)
-		// fmt.Println(structured)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		for projectIndex := range structured.Components {
-			applicationList = append(applicationList, structured.Components[projectIndex].Key)
-		}
-	}
-	loadingCh <- true
-	displayJob("list app", "end")
-	return applicationList
-
-}
 
 func applicationProjectSearchApiLength(host string, applicationKey string, credential string, authMode int) int {
 	// data := httpRequest(host+projectIndexApi, credential)
@@ -327,32 +350,62 @@ func listProjectofApplication(host string, projectListed []string, applicationKe
 
 }
 
-func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int, authMode int) []ProjectSearchList {
+func projectFiltering(projectList []ProjectSearchList, host string, credential string, option int, authMode int, appName string) []ProjectSearchList {
 	displayJob("project filtering", "start")
 	go displayLoading(loadingCh)
+	const (
+		emptyString = ""
+	)
+	var listedProjectOnApp, applicationList []string
+	var ok bool
 
-	lengthAppPage := projectSearchApiLength(host, credential, "APP", authMode)
+	if appName == emptyString {
+		lengthAppPage := projectSearchApiLength(host, credential, "APP", authMode)
 
-	applicationList := listApp(host, credential, lengthAppPage, authMode)
-	var lisedProjectOnApp []string
+		applicationListInterface := listApp(host, credential, lengthAppPage, authMode, 0)
+
+		// Type assertion to convert the interface to []string
+		applicationList, ok = applicationListInterface.([]string)
+		if !ok {
+			// Handle the case where the returned value is not []string
+			fmt.Println("Error: Unexpected return type from listApp")
+			return projectList
+		}
+
+	} else {
+		applicationList = strings.Split(appName, ",")
+	}
+
 	for i := range applicationList {
 		lengthProjectOfAppPage := applicationProjectSearchApiLength(host, applicationList[i], credential, authMode)
 		// fmt.Println(lengthProjectOfAppPage)
-		lisedProjectOnApp = listProjectofApplication(host, lisedProjectOnApp, applicationList[i],
+		listedProjectOnApp = listProjectofApplication(host, listedProjectOnApp, applicationList[i],
 			lengthProjectOfAppPage, credential, authMode)
 		// fmt.Println(lisedProjectOnApp)
 	}
+	// else {
+	// 	lengthProjectOfAppPage := applicationProjectSearchApiLength(host, appName, credential, authMode)
+	// 	// fmt.Println(lengthProjectOfAppPage)
+	// 	listedProjectOnApp = listProjectofApplication(host, listedProjectOnApp, appName,
+	// 		lengthProjectOfAppPage, credential, authMode)
+	// }
 
-	lisedProjectOnApp = removeRedundantValues(lisedProjectOnApp)
+	// fmt.Println(listedProjectOnApp, appName)
+
+	listedProjectOnApp = removeRedundantValues(listedProjectOnApp)
+
+	// time.Sleep(1 * time.Minute)
 
 	// fmt.Println(lisedProjectOnApp)
 	switch option {
 	case 0:
-		projectList = deleteProjectsByKeys(projectList, lisedProjectOnApp)
+		projectList = deleteProjectsByKeys(projectList, listedProjectOnApp)
 	case 1:
-		projectList = keepProjectsByKeys(projectList, lisedProjectOnApp)
+		projectList = keepProjectsByKeys(projectList, listedProjectOnApp)
+	default:
 	}
-
+	// loadingCh <- true
+	loadingCh <- true
 	displayJob("project filtering", "end")
 
 	return projectList
@@ -376,18 +429,20 @@ func qualityGateofProject(projectList []ProjectSearchList, host string, credenti
 		projectList[index].QualityGateName = structured.QualityGate.Name
 
 	}
+	loadingCh <- true
 	displayJob("obtain quality gate data", "end")
 
 	return projectList
 }
 
 func languageofProject(projectList []ProjectSearchList, host string, credential string, authMode int) []ProjectSearchList {
-
+	displayJob("obtain language of project", "start")
+	go displayLoading(loadingCh)
 	const empty = `-`
 
 	for index := range projectList {
 		// raw := httpRequest(host+projectBranchesApi+projectList[index].Key, credential)
-		raw := navigationComponentApi(host, projectList[index].Key, credential, authMode)
+		raw := navigationComponentApi(host, projectList[index].Key, projectList[index].Branch, credential, authMode)
 		var structured NavigationComponent
 		err := dataParse(raw, &structured)
 		handleErr(err)
@@ -412,88 +467,63 @@ func languageofProject(projectList []ProjectSearchList, host string, credential 
 		}
 
 	}
-	// time.Sleep(60 * time.Second)
+	loadingCh <- true
+
+	displayJob("obtain language of project", "end")
 	return projectList
 }
 
-func printStructTable(data interface{}, selectedColumns ...string) {
-	slice := reflect.ValueOf(data)
+func metricProject(projectList interface{}, host string, credential string, authMode int) interface{} {
+	displayJob("obtain metric of projects", "start")
+	go displayLoading(loadingCh)
+	metrics := []string{
+		"bugs", "security_hotspots",
+		"line_coverage", "duplicated_lines",
+		"code_smells", "sqale_index"}
 
-	if err := validateInput(slice); err != nil {
-		fmt.Println(err)
-		return
+	sliceValue := reflect.ValueOf(projectList)
+	if sliceValue.Kind() != reflect.Slice {
+		panic("Input is not a slice")
 	}
 
-	columnWidths := calculateColumnWidths(slice, selectedColumns)
-	// fmt.Println(columnWidths)
+	for index := 0; index < sliceValue.Len(); index++ {
+		element := sliceValue.Index(index)
+		keyField := element.FieldByName("Key")
+		key := keyField.Interface().(string)
 
-	printHeader(slice, columnWidths, selectedColumns)
-	printValues(slice, columnWidths, selectedColumns)
-}
-
-func validateInput(slice reflect.Value) error {
-	if slice.Kind() != reflect.Slice {
-		return errors.New("Input is not a slice")
-	}
-
-	if slice.Len() == 0 {
-		return errors.New("Slice is empty")
-	}
-
-	return nil
-}
-
-func calculateColumnWidths(slice reflect.Value, selectedColumns []string) []int {
-	columnWidths := make([]int, slice.Index(0).Type().NumField())
-
-	for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
-		fieldName := slice.Index(0).Type().Field(fieldIndex).Name
-		if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
-			updateColumnWidths(slice, fieldIndex, columnWidths)
+		var branch string
+		if element.Type().Name() == "ProjectSearchList" {
+			branchField := element.FieldByName("Branch")
+			branch = branchField.Interface().(string)
+		} else if element.Type().Name() == "AppList" {
+			// If it's an AppList, use default branch "main"
+			branchField := element.FieldByName("MainBranch")
+			branch = branchField.Interface().(string)
 		}
-	}
 
-	return columnWidths
-}
+		var structured ProjectMeasures
+		raw := measuresComponentApi(host, key, branch, strings.Join(metrics, ", "), credential, authMode)
+		err := dataParse(raw, &structured)
+		handleErr(err)
 
-func updateColumnWidths(slice reflect.Value, fieldIndex int, columnWidths []int) {
-	for rowIndex := 0; rowIndex < slice.Len(); rowIndex++ {
-		cellValue := fmt.Sprintf("%v", slice.Index(rowIndex).Field(fieldIndex).Interface())
-		cellWidth := len(cellValue)
-		if cellWidth > columnWidths[fieldIndex] {
-			columnWidths[fieldIndex] = cellWidth
-		}
-	}
-}
-
-func printHeader(slice reflect.Value, columnWidths []int, selectedColumns []string) {
-	for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
-		fieldName := slice.Index(0).Type().Field(fieldIndex).Name
-		if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
-			fmt.Printf("%-*s", columnWidths[fieldIndex]+2, fieldName)
-		}
-	}
-	fmt.Println()
-}
-
-func printValues(slice reflect.Value, columnWidths []int, selectedColumns []string) {
-	for rowIndex := 0; rowIndex < slice.Len(); rowIndex++ {
-		for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
-			fieldName := slice.Index(0).Type().Field(fieldIndex).Name
-			if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
-				cellValue := fmt.Sprintf("%v", slice.Index(rowIndex).Field(fieldIndex).Interface())
-				fmt.Printf("%-*s", columnWidths[fieldIndex]+2, cellValue)
+		for _, measure := range structured.Component.Measures {
+			switch measure.Metric {
+			case "bugs":
+				element.FieldByName("Bugs").SetString(measure.Value)
+			case "security_hotspots":
+				element.FieldByName("SecurityHotspots").SetString(measure.Value)
+			case "line_coverage":
+				element.FieldByName("LineCoverage").SetString(measure.Value)
+			case "duplicated_lines":
+				element.FieldByName("DuplicatedLines").SetString(measure.Value)
+			case "code_smells":
+				element.FieldByName("CodeSmells").SetString(measure.Value)
+			case "sqale_index":
+				element.FieldByName("DebtInMinute").SetString(measure.Value)
 			}
 		}
-		fmt.Println()
 	}
-}
-
-func contains(slice []string, s string) bool {
-	for _, value := range slice {
-		if value == s {
-			return true
-		}
-	}
-	return false
+	loadingCh <- true
+	displayJob("obtain metric of projects", "end")
+	return projectList
 }

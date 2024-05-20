@@ -9,39 +9,39 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
-func arguments(subcommand string) (host *string, username *string, password *string, token *string, authMode int, fileOutput *string, additionalOptions map[string]interface{}) {
+func arguments(subcommand int) (host *string,
+	credential string, authMode int, fileOutput *string,
+	additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
-	username = flagSet.String("username", "", "Username will be used for authentication to Sonarqube server")
-	password = flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
-	token = flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
+	username := flagSet.String("username", "", "Username will be used for authentication to Sonarqube server")
+	password := flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
+	token := flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
 
 	additionalOptions = make(map[string]interface{})
 
-	// var authMode int
-
 	switch subcommand {
-	case "project":
+	case 0:
 
 		unlistedApp := flagSet.Bool("unlisted-on-app", false, "List only not listed projects on any application")
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
+		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
 		} else {
 			authMode = 0
 		}
-		var credential string
 		switch authMode {
 		case 0:
 			credential = *token
 		case 1:
 			credential = authorizationHeader(*username, *password)
 		}
-
 		// fmt.Println(*username, *password, credential, authMode)
 
 		raw := navigationGlobalApi(*host, credential, authMode)
@@ -51,6 +51,20 @@ func arguments(subcommand string) (host *string, username *string, password *str
 		err := dataParse(raw, &sonarqubeInfo)
 
 		handleErr(err)
+		appArray := strings.Split(*app, ",")
+		// fmt.Println(appArray)
+		var notFounded []string
+		for index := range appArray {
+			_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
+			if checkStatusCode == 404 {
+				notFounded = append(notFounded, appArray[index])
+			}
+		}
+		if len(notFounded) >= 1 {
+			fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFounded, ", "))
+			os.Exit(1)
+		}
+
 		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
 			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
 			os.Exit(1)
@@ -63,13 +77,39 @@ func arguments(subcommand string) (host *string, username *string, password *str
 
 		additionalOptions["unlistedApp"] = *unlistedApp
 		additionalOptions["listedApp"] = *listedApp
+		additionalOptions["app"] = *app
 		// fmt.Println(*unlistedApp)
+	case 1:
+		flagSet.Parse(os.Args[2:])
+		if *username != "" && *password != "" && *token == "" {
+			authMode = 1
+		} else {
+			authMode = 0
+		}
+		switch authMode {
+		case 0:
+			credential = *token
+		case 1:
+			credential = authorizationHeader(*username, *password)
+		}
+		// fmt.Println(*username, *password, credential, authMode)
 
+		raw := navigationGlobalApi(*host, credential, authMode)
+		// raw := []byte(`{"canAdmin":true,"globalPages":[],"settings":{"sonar.lf.enableGravatar":"false","sonar.developerAggregatedInfo.disabled":"false","sonar.lf.gravatarServerUrl":"https://secure.gravatar.com/avatar/{EMAIL_MD5}.jpg?s\u003d{SIZE}\u0026d\u003didenticon","sonar.technicalDebt.ratingGrid":"0.05,0.1,0.2,0.5","sonar.updatecenter.activate":"false"},"qualifiers":["TRK"],"version":"9.5 (build 56709)","productionDatabase":true,"branchesEnabled":false,"instanceUsesDefaultAdminCredentials":false,"multipleAlmEnabled":false,"projectImportFeatureEnabled":false,"regulatoryReportFeatureEnabled":false,"edition":"community","needIssueSync":false,"standalone":true}`)
+
+		var sonarqubeInfo NavigationGlobal
+		err := dataParse(raw, &sonarqubeInfo)
+
+		handleErr(err)
+		if sonarqubeInfo.Edition == "community" {
+			fmt.Println("Error: Unavailable on Sonarqube Community. ")
+			os.Exit(1)
+		}
 	default:
 		fmt.Println("tesuto")
 	}
 
-	return host, username, password, token, authMode, fileOutput, additionalOptions
+	return host, credential, authMode, fileOutput, additionalOptions
 
 }
 

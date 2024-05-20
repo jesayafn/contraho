@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
 
-func httpRequest(url string, credential string, mode int) (data []byte) {
+func httpRequest(url string, credential string, mode int) (data []byte, statusCode int) {
 
 	// t := http.DefaultTransport.(*http.Transport).Clone()
 	// t.MaxIdleConns = 100
@@ -43,7 +43,8 @@ func httpRequest(url string, credential string, mode int) (data []byte) {
 	}
 	// defer resp.Body.Close()
 
-	data, err = ioutil.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
+	statusCode = resp.StatusCode
 
 	if err != nil {
 		fmt.Println("Error reading HTTP response body:", err)
@@ -53,7 +54,7 @@ func httpRequest(url string, credential string, mode int) (data []byte) {
 
 	// data = string(body)
 	// fmt.Println(resp.StatusCode)
-	return data
+	return data, statusCode
 
 }
 
@@ -68,7 +69,7 @@ func projectSearchApi(host string, qualifiers string, size int, pageNumber int, 
 	encodedQuery := queryParams.Encode()
 	fullPath := host + projectsSearch + "?" + encodedQuery
 
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
 }
 
@@ -81,7 +82,7 @@ func projectBranchesListApi(host string, projectKey string, credential string, m
 	encodedQuery := queryParams.Encode()
 	fullPath := host + projectBranchesList + "?" + encodedQuery
 
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 
 	return data
 }
@@ -96,8 +97,9 @@ func measuresComponentApi(host string, projectKey string, branch string, metricK
 	queryParams.Add("branch", branch)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + measuresComponent + "?" + encodedQuery
+	// fmt.Println(fullPath)
 
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 
 	return data
 
@@ -110,11 +112,12 @@ func projectAnalysesSearchApi(host string, size int, pageNumber int, projectKey 
 	queryParams := url.Values{}
 	queryParams.Add("ps", fmt.Sprintf("%d", size))
 	queryParams.Add("p", fmt.Sprintf("%d", pageNumber))
+	queryParams.Add("branch", branch)
 	queryParams.Add("project", projectKey)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + projectAnalysesSearch + "?" + encodedQuery
 
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 
 	return data
 
@@ -131,7 +134,7 @@ func permissionUsersApi(host string, projectKey string, credential string, mode 
 	encodedQuery := queryParams.Encode()
 	fullPath := host + permissionUsers + "?" + encodedQuery
 	// fmt.Println(fullPath)
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 
 	return data
 
@@ -147,7 +150,7 @@ func applicationsSearchApi(host string, size int, pageNumber int, applicationKey
 	queryParams.Add("p", fmt.Sprintf("%d", pageNumber))
 	encodedQuery := queryParams.Encode()
 	fullPath := host + applicationsSearch + "?" + encodedQuery
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
 
 }
@@ -158,7 +161,7 @@ func navigationGlobalApi(host string, credential string, mode int) (data []byte)
 	)
 	fullPath := host + navigationGlobal
 	// fmt.Println(credential)
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
 }
 
@@ -171,20 +174,21 @@ func qualityGatesGetByProjectApi(host string, projectKey string, credential stri
 	queryParams.Add("project", projectKey)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + qualityGatesGetByProject + "?" + encodedQuery
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
 }
 
-func navigationComponentApi(host string, projectKey string, credential string, mode int) (data []byte) {
+func navigationComponentApi(host string, projectKey string, branch string, credential string, mode int) (data []byte) {
 	const (
 		navigationComponent = "/api/navigation/component"
 	)
 
 	queryParams := url.Values{}
 	queryParams.Set("component", projectKey)
+	queryParams.Set("branch", branch)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + navigationComponent + "?" + encodedQuery
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
 }
 
@@ -197,6 +201,37 @@ func qualityProfilesShowApi(host string, qualityProfileKey string, credential st
 	queryParams.Set("key", qualityProfileKey)
 	encodedQuery := queryParams.Encode()
 	fullPath := host + qualityProfilesShow + "?" + encodedQuery
-	data = httpRequest(fullPath, credential, mode)
+	data, _ = httpRequest(fullPath, credential, mode)
 	return data
+}
+
+func measuresSearchHistoryApi(host string, projectKey string, branch string, metrics string, dateFrom string, dateTo string,
+	credential string, mode int) (data []byte) {
+	const (
+		measuresSearchHistory = "/api/measures/search_history"
+	)
+	queryParams := url.Values{}
+	queryParams.Set("component", projectKey)
+	queryParams.Set("branch", branch)
+	queryParams.Set("metrics", metrics)
+	queryParams.Set("from", dateFrom)
+	queryParams.Set("to", dateTo)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + measuresSearchHistory + "?" + encodedQuery
+	data, _ = httpRequest(fullPath, credential, mode)
+	return data
+}
+
+func applicationsShowApi(host string, applicationKey string, branch string, credential string, mode int) (data []byte, statusCode int) {
+	const (
+		measuresSearchHistory = "/api/applications/show"
+	)
+	queryParams := url.Values{}
+	queryParams.Set("application", applicationKey)
+	queryParams.Set("branch", branch)
+	encodedQuery := queryParams.Encode()
+	fullPath := host + measuresSearchHistory + "?" + encodedQuery
+	// fmt.Println(fullPath)
+	data, statusCode = httpRequest(fullPath, credential, mode)
+	return data, statusCode
 }
