@@ -48,16 +48,12 @@ func projectSearch() {
 		projectList = project(*host, credential, authMode, lengthProjectPage, -1, emptyString)
 	}
 	if *fileOutput != "" {
-		createCSVFile(*fileOutput, projectList)
+		createCSVFile(*fileOutput, startTime, projectList)
 	} else {
-		printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+		printStructTable(projectList, startTime, "Key", "Name", "Branch", "Loc", "Owner")
 
 		// printStructAsTable(projectList, []string{"Key", "Name", "Branch", "Loc", "Owner"})
 	}
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
-
-	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 
 }
 
@@ -124,13 +120,8 @@ func appSearch() {
 	appList = metricProject(appList, *host, credential, authMode).([]AppList)
 
 	if *fileOutput != "" {
-		createCSVFile(*fileOutput, appList)
+		createCSVFile(*fileOutput, startTime, appList)
 	} else {
-		printStructTable(appList, "Key", "Name", "Loc")
+		printStructTable(appList, startTime, "Key", "Name", "Loc")
 	}
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
-
-	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
-
 }

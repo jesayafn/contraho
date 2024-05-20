@@ -9,9 +9,10 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
+	"time"
 )
 
-func printStructTable(data interface{}, selectedColumns ...string) {
+func printStructTable(data interface{}, startTime time.Time, selectedColumns ...string) {
 	slice := reflect.ValueOf(data)
 
 	if err := validateInput(slice); err != nil {
@@ -43,8 +44,14 @@ func printStructTable(data interface{}, selectedColumns ...string) {
 				// Print the header and data to the pager
 				printHeader(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
 				printValues(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
+				endTime := time.Now()
+				elapsedTime := endTime.Sub(startTime).Seconds()
+
+				fmt.Fprintf(pagerIn.(io.Writer), "Execution Time: %.3f seconds\n", elapsedTime)
+
 				pagerIn.Close()
 				pagerCmd.Wait()
+
 				return
 			}
 		}

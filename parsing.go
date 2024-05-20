@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func arguments(subcommand int) (host *string,
@@ -113,7 +114,7 @@ func arguments(subcommand int) (host *string,
 
 }
 
-func createCSVFile(fileOutput string, data interface{}) {
+func createCSVFile(fileOutput string, startTime time.Time, data interface{}) {
 	// Open the CSV file
 	file, err := os.Create(fileOutput)
 	if err != nil {
@@ -146,6 +147,11 @@ func createCSVFile(fileOutput string, data interface{}) {
 	}
 
 	fmt.Println("CSV file generated successfully!")
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+
 }
 
 func authorizationHeader(username string, password string) string {
