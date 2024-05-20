@@ -51,6 +51,8 @@ func projectSearch() {
 		createCSVFile(*fileOutput, projectList)
 	} else {
 		printStructTable(projectList, "Key", "Name", "Branch", "Loc", "Owner")
+
+		// printStructAsTable(projectList, []string{"Key", "Name", "Branch", "Loc", "Owner"})
 	}
 	endTime := time.Now()
 	elapsedTime := endTime.Sub(startTime).Seconds()

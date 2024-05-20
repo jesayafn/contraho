@@ -99,6 +99,7 @@ func languageofApp(appList []AppList, host string, credential string, authMode i
 		appList[indexApp].Language = strings.Join(languageofProjectonApp, ", ")
 
 	}
+	loadingCh <- true
 	displayJob("obtain language of project", "end")
 	return appList
 }
