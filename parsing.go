@@ -25,10 +25,6 @@ func arguments(subcommand int) (host *string,
 	token := flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
 	pagingOutput = flagSet.Bool("paging", false, "Pagination output using pager (only available on Linux and macOS)")
-	if *pagingOutput && runtime.GOOS == "windows" {
-		fmt.Println("Error: --paging is not supported on Windows")
-		os.Exit(1)
-	}
 	additionalOptions = make(map[string]interface{})
 
 	switch subcommand {
@@ -38,6 +34,10 @@ func arguments(subcommand int) (host *string,
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
 		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
+		if *pagingOutput && runtime.GOOS == "windows" {
+			fmt.Println("Error: --paging is not supported on Windows")
+			os.Exit(1)
+		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
 		} else {
@@ -88,6 +88,10 @@ func arguments(subcommand int) (host *string,
 		// fmt.Println(*unlistedApp)
 	case 1:
 		flagSet.Parse(os.Args[2:])
+		if *pagingOutput && runtime.GOOS == "windows" {
+			fmt.Println("Error: --paging is not supported on Windows")
+			os.Exit(1)
+		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
 		} else {
