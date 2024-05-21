@@ -63,6 +63,11 @@ func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, 
 	// Fallback to standard output if pager is not available
 	printHeader(slice, columnWidths, selectedColumns, os.Stdout)
 	printValues(slice, columnWidths, selectedColumns, os.Stdout)
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Fprintf(os.Stdout, "Execution Time: %.3f seconds\n", elapsedTime)
+
 }
 
 func validateInput(slice reflect.Value) error {
