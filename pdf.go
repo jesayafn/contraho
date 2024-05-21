@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/jung-kurt/gofpdf/v2"
 )
 
-func generatePDF(filename string, data interface{}, fieldsToShow ...string) error {
-	pdf := gofpdf.New("L", "mm", "A4", "")
+func generatePDF(filename string, data interface{}, fields ...string) error {
+	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Arial", "", 8)
 
@@ -19,40 +20,91 @@ func generatePDF(filename string, data interface{}, fieldsToShow ...string) erro
 		return fmt.Errorf("data should be a slice of structs")
 	}
 
-	// Check if the slice is empty
+	// Get the type of the slice elements
 	if val.Len() == 0 {
 		return fmt.Errorf("data slice is empty")
 	}
 
-	// Get the type of the slice elements
 	elemType := val.Index(0).Type()
 
-	// Map to keep track of field indices
-	fieldIndices := make(map[string]int)
-	for i := 0; i < elemType.NumField(); i++ {
-		field := elemType.Field(i)
-		fieldIndices[field.Name] = i
-	}
-
-	// Table header with specified fields
-	for _, fieldName := range fieldsToShow {
-		if index, ok := fieldIndices[fieldName]; ok {
-			field := elemType.Field(index)
-			pdf.CellFormat(40, 10, field.Name, "1", 0, "C", false, 0, "")
+	// Verify that the fields exist in the struct
+	fieldIndices := make([]int, len(fields))
+	for i, field := range fields {
+		structField, found := elemType.FieldByName(field)
+		if !found {
+			return fmt.Errorf("field %s not found in struct", field)
 		}
+		fieldIndices[i] = structField.Index[0]
 	}
-	pdf.Ln(-1)
 
-	// Table content with specified fields
-	for i := 0; i < val.Len(); i++ {
-		elem := val.Index(i)
-		for _, fieldName := range fieldsToShow {
-			if index, ok := fieldIndices[fieldName]; ok {
-				field := elem.Field(index)
-				pdf.CellFormat(40, 10, fmt.Sprintf("%v", field.Interface()), "1", 0, "L", false, 0, "")
-			}
+	// Calculate cell widths based on number of fields
+	cellWidth := 190.0 / float64(len(fields)) // Total width is 190mm
+	const (
+		defaultHeightCell = 8
+	)
+
+	// Function to print table header
+	printHeader := func() {
+		for _, field := range fields {
+			pdf.CellFormat(cellWidth, defaultHeightCell, strings.ToUpper(field), "1", 0, "C", false, 0, "")
 		}
 		pdf.Ln(-1)
+	}
+
+	// Print table header initially
+	printHeader()
+
+	// Table content
+	for i := 0; i < val.Len(); i++ {
+		elem := val.Index(i)
+		heights := make([]float64, len(fields))
+
+		// Measure the height of each cell
+		for j, fieldIndex := range fieldIndices {
+			fieldValue := elem.Field(fieldIndex)
+			text := fmt.Sprintf("%v", fieldValue.Interface())
+			lines := pdf.SplitLines([]byte(text), cellWidth)
+			heights[j] = float64(len(lines)) * float64(defaultHeightCell)
+		}
+
+		// Determine the maximum height of the row
+		maxHeight := 0.0
+		for _, h := range heights {
+			if h > maxHeight {
+				maxHeight = h
+			}
+		}
+
+		// Calculate the usable page height
+		_, topMargin, _, bottomMargin := pdf.GetMargins()
+		_, pageHeight := pdf.GetPageSize()
+		usablePageHeight := pageHeight - bottomMargin - topMargin
+
+		// Check if the row fits on the current page, otherwise add a new page
+		if pdf.GetY()+maxHeight > usablePageHeight {
+			pdf.AddPage()
+			// Print table header again on new page
+			printHeader()
+		}
+
+		y := pdf.GetY()
+
+		// Print each cell
+		for j, fieldIndex := range fieldIndices {
+			fieldValue := elem.Field(fieldIndex)
+			text := fmt.Sprintf("%v", fieldValue.Interface())
+			x := pdf.GetX()
+			if heights[j] == maxHeight || heights[j] == 0 {
+				pdf.MultiCell(cellWidth, defaultHeightCell, text, "1", "L", false)
+				pdf.SetXY(x+cellWidth, y)
+			} else {
+				height := maxHeight / defaultHeightCell
+				pdf.MultiCell(cellWidth, defaultHeightCell*height, text, "1", "L", false)
+				pdf.SetXY(x+cellWidth, y)
+			}
+		}
+
+		pdf.Ln(maxHeight)
 	}
 
 	// Save the PDF to a file
