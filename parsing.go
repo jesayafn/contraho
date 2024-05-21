@@ -2,28 +2,25 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
-	"time"
 )
 
 func arguments(subcommand int) (host *string,
 	credential string, authMode int,
-	fileOutput *string, pagingOutput *bool,
+	csvOutput *string, pdfOutput *string, pagingOutput *bool,
 	additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
 	username := flagSet.String("username", "", "Username will be used for authentication to Sonarqube server")
 	password := flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
 	token := flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
-	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
+	csvOutput = flagSet.String("filename-csv", "", "CSV filename will be used for CSV output file")
+	pdfOutput = flagSet.String("filename-pdf", "", "PDF filename will be used for PDF output file")
 	pagingOutput = flagSet.Bool("paging", false, "Pagination output using pager (only available on Linux and macOS)")
 	additionalOptions = make(map[string]interface{})
 
@@ -120,47 +117,7 @@ func arguments(subcommand int) (host *string,
 		fmt.Println("tesuto")
 	}
 
-	return host, credential, authMode, fileOutput, pagingOutput, additionalOptions
-
-}
-
-func createCSVFile(fileOutput string, startTime time.Time, data interface{}) {
-	// Open the CSV file
-	file, err := os.Create(fileOutput)
-	if err != nil {
-		fmt.Println("Error creating CSV file:", err)
-		return
-	}
-	defer file.Close()
-
-	// Create a CSV writer
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Use reflection to get field names and values
-	val := reflect.ValueOf(data)
-	if val.Kind() != reflect.Slice {
-		fmt.Println("Input data is not a slice")
-		return
-	}
-
-	// Write the CSV header (field names)
-	if val.Len() > 0 {
-		header := getStructFieldNames(val.Index(0).Interface())
-		writer.Write(header)
-	}
-
-	// Write the data rows
-	for i := 0; i < val.Len(); i++ {
-		row := getStructFieldValues(val.Index(i).Interface())
-		writer.Write(row)
-	}
-
-	fmt.Println("CSV file generated successfully!")
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
-
-	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+	return host, credential, authMode, csvOutput, pdfOutput, pagingOutput, additionalOptions
 
 }
 
@@ -193,39 +150,6 @@ func findIndexOfHighestValue(numbers []int) int {
 	}
 
 	return maxIndex
-}
-
-func getStructFieldNames(v interface{}) []string {
-	var fields []string
-	value := reflect.ValueOf(v)
-
-	// Make sure the input is a struct
-	if value.Kind() == reflect.Struct {
-		for i := 0; i < value.NumField(); i++ {
-			fields = append(fields, value.Type().Field(i).Name)
-		}
-	}
-	return fields
-}
-
-func getStructFieldValues(v interface{}) []string {
-	var values []string
-	value := reflect.ValueOf(v)
-	// fmt.Println(reflect.ValueOf(v), reflect.Struct)
-
-	// Make sure the input is a struct
-	// if value.Kind() == reflect.Struct {
-	for i := 0; i < value.NumField(); i++ {
-		// for i := range value.Nu {
-		fieldValue := value.Field(i)
-		// Handle numeric fields as strings to preserve leading zeros
-		if fieldValue.Kind() == reflect.Int {
-			values = append(values, strconv.Itoa(int(fieldValue.Int())))
-		} else {
-			values = append(values, fmt.Sprintf("%v", fieldValue.Interface()))
-		}
-	}
-	return values
 }
 
 func removeRedundantValues(arr []string) []string {

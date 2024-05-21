@@ -32,7 +32,7 @@ func main() {
 func projectSearch() {
 	startTime := time.Now()
 
-	host, credential, authMode, fileOutput, pagingOutput, otherOptions := arguments(0)
+	host, credential, authMode, csvOutput, pdfOutput, pagingOutput, otherOptions := arguments(0)
 
 	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 
@@ -47,8 +47,10 @@ func projectSearch() {
 	default:
 		projectList = project(*host, credential, authMode, lengthProjectPage, -1, emptyString)
 	}
-	if *fileOutput != "" {
-		createCSVFile(*fileOutput, startTime, projectList)
+	if *csvOutput != "" {
+		createCSVFile(*csvOutput, startTime, projectList)
+	} else if *pdfOutput != "" {
+		generatePDF(*pdfOutput, projectList, "Key", "Name", "Branch", "Loc", "Owner")
 	} else {
 		printStructTable(projectList, startTime, *pagingOutput, "Key", "Name", "Branch", "Loc", "Owner")
 
@@ -101,7 +103,7 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 func appSearch() {
 	startTime := time.Now()
 
-	host, credential, authMode, fileOutput, pagingOutput, _ := arguments(1)
+	host, credential, authMode, csvOutput, pdfOutput, pagingOutput, _ := arguments(1)
 
 	lengthAppPage := projectSearchApiLength(*host, credential, "APP", authMode)
 
@@ -119,8 +121,11 @@ func appSearch() {
 	appList = branchDetailOfProjects(appList, *host, credential, authMode).([]AppList)
 	appList = metricProject(appList, *host, credential, authMode).([]AppList)
 
-	if *fileOutput != "" {
-		createCSVFile(*fileOutput, startTime, appList)
+	if *csvOutput != "" {
+		createCSVFile(*csvOutput, startTime, appList)
+	} else if *pdfOutput != "" {
+		generatePDF(*pdfOutput, appList,
+			"Key", "Name", "Loc", "Email", "Owner")
 	} else {
 		printStructTable(appList, startTime, *pagingOutput, "Key", "Name", "Loc")
 	}
