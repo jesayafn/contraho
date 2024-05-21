@@ -32,7 +32,7 @@ func main() {
 func projectSearch() {
 	startTime := time.Now()
 
-	host, credential, authMode, fileOutput, otherOptions := arguments(0)
+	host, credential, authMode, fileOutput, pagingOutput, otherOptions := arguments(0)
 
 	lengthProjectPage := projectSearchApiLength(*host, credential, "TRK", authMode)
 
@@ -50,7 +50,7 @@ func projectSearch() {
 	if *fileOutput != "" {
 		createCSVFile(*fileOutput, startTime, projectList)
 	} else {
-		printStructTable(projectList, startTime, "Key", "Name", "Branch", "Loc", "Owner")
+		printStructTable(projectList, startTime, *pagingOutput, "Key", "Name", "Branch", "Loc", "Owner")
 
 		// printStructAsTable(projectList, []string{"Key", "Name", "Branch", "Loc", "Owner"})
 	}
@@ -101,7 +101,7 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 func appSearch() {
 	startTime := time.Now()
 
-	host, credential, authMode, fileOutput, _ := arguments(1)
+	host, credential, authMode, fileOutput, pagingOutput, _ := arguments(1)
 
 	lengthAppPage := projectSearchApiLength(*host, credential, "APP", authMode)
 
@@ -122,6 +122,6 @@ func appSearch() {
 	if *fileOutput != "" {
 		createCSVFile(*fileOutput, startTime, appList)
 	} else {
-		printStructTable(appList, startTime, "Key", "Name", "Loc")
+		printStructTable(appList, startTime, *pagingOutput, "Key", "Name", "Loc")
 	}
 }

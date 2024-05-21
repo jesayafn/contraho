@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func printStructTable(data interface{}, startTime time.Time, selectedColumns ...string) {
+func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, selectedColumns ...string) {
 	slice := reflect.ValueOf(data)
 
 	if err := validateInput(slice); err != nil {
@@ -26,13 +26,16 @@ func printStructTable(data interface{}, startTime time.Time, selectedColumns ...
 	// printHeader(slice, columnWidths, selectedColumns)
 	// printValues(slice, columnWidths, selectedColumns)
 	var pagerCmd *exec.Cmd
-	switch runtime.GOOS {
-	// case "windows":
-	// 	pagerCmd = exec.Command("more")
-	case "darwin", "linux":
-		pagerCmd = exec.Command("less")
-	default:
-		pagerCmd = nil
+
+	if pagingOutput {
+		switch runtime.GOOS {
+		// case "windows":
+		// 	pagerCmd = exec.Command("more")
+		case "darwin", "linux":
+			pagerCmd = exec.Command("less")
+		default:
+			pagerCmd = nil
+		}
 	}
 
 	if pagerCmd != nil {

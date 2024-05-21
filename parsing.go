@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 )
 
 func arguments(subcommand int) (host *string,
-	credential string, authMode int, fileOutput *string,
+	credential string, authMode int,
+	fileOutput *string, pagingOutput *bool,
 	additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
@@ -22,7 +24,11 @@ func arguments(subcommand int) (host *string,
 	password := flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
 	token := flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
-
+	pagingOutput = flagSet.Bool("paging", false, "Pagination output using pager (only available on Linux and macOS)")
+	if *pagingOutput && runtime.GOOS == "windows" {
+		fmt.Println("Error: --paging is not supported on Windows")
+		os.Exit(1)
+	}
 	additionalOptions = make(map[string]interface{})
 
 	switch subcommand {
@@ -110,7 +116,7 @@ func arguments(subcommand int) (host *string,
 		fmt.Println("tesuto")
 	}
 
-	return host, credential, authMode, fileOutput, additionalOptions
+	return host, credential, authMode, fileOutput, pagingOutput, additionalOptions
 
 }
 
