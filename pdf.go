@@ -37,10 +37,18 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 		fieldIndices[i] = structField.Index[0]
 	}
 
+	// Calculate the usable page height
+
+	leftMargin, topMargin, rightMargin, bottomMargin := pdf.GetMargins()
+	_, pageHeight := pdf.GetPageSize()
+	usablePageWidth := 210 - leftMargin - rightMargin
+	usablePageHeight := pageHeight - bottomMargin - topMargin
+
 	// Calculate cell widths based on number of fields
-	cellWidth := 190.0 / float64(len(fields)) // Total width is 190mm
+	cellWidth := usablePageWidth / float64(len(fields)) // Total width is 190mm
 	const (
-		defaultHeightCell = 8
+		defaultHeightCell = 5
+		// lineHeightMultiplier = 0.7
 	)
 
 	// Function to print table header
@@ -75,11 +83,6 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 			}
 		}
 
-		// Calculate the usable page height
-		_, topMargin, _, bottomMargin := pdf.GetMargins()
-		_, pageHeight := pdf.GetPageSize()
-		usablePageHeight := pageHeight - bottomMargin - topMargin
-
 		// Check if the row fits on the current page, otherwise add a new page
 		if pdf.GetY()+maxHeight > usablePageHeight {
 			pdf.AddPage()
@@ -90,18 +93,29 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 		y := pdf.GetY()
 
 		// Print each cell
-		for j, fieldIndex := range fieldIndices {
+		for _, fieldIndex := range fieldIndices {
 			fieldValue := elem.Field(fieldIndex)
 			text := fmt.Sprintf("%v", fieldValue.Interface())
+
+			// fmt.Println(text)
+			// fmt.Println(heights[j])
 			x := pdf.GetX()
-			if heights[j] == maxHeight || heights[j] == 0 {
-				pdf.MultiCell(cellWidth, defaultHeightCell, text, "1", "L", false)
-				pdf.SetXY(x+cellWidth, y)
-			} else {
-				height := maxHeight / defaultHeightCell
-				pdf.MultiCell(cellWidth, defaultHeightCell*height, text, "1", "L", false)
-				pdf.SetXY(x+cellWidth, y)
-			}
+
+			// Add padding to the cell
+			padding := 1.0
+			pdf.Rect(x, y, cellWidth, maxHeight, "D")
+
+			// Calculate the position for text to ensure padding
+			textX := x + padding
+			textY := y + padding
+
+			// Print the text with proper alignment
+			pdf.SetXY(textX, textY)
+			pdf.MultiCell(cellWidth, defaultHeightCell, text, "0", "LT", false)
+			pdf.SetXY(x+cellWidth, y)
+
+			// Move to the next cell position
+			pdf.SetXY(x+cellWidth, y)
 		}
 
 		pdf.Ln(maxHeight)
