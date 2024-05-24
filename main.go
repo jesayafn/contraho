@@ -124,8 +124,9 @@ func appSearch() {
 	if *csvOutput != "" {
 		createCSVFile(*csvOutput, startTime, appList)
 	} else if *pdfOutput != "" {
-		generatePDF(*pdfOutput, appList,
+		err := generatePDF(*pdfOutput, appList,
 			"Key", "Name", "Loc", "Email", "Owner")
+		handleErr(err)
 	} else {
 		printStructTable(appList, startTime, *pagingOutput, "Key", "Name", "Loc")
 	}

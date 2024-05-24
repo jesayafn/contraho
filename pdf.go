@@ -8,8 +8,12 @@ import (
 	"github.com/jung-kurt/gofpdf/v2"
 )
 
+const (
+	defaultHeightCell = 5
+)
+
 func generatePDF(filename string, data interface{}, fields ...string) error {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Arial", "", 8)
 
@@ -40,17 +44,26 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 	// Calculate the usable page height
 
 	leftMargin, topMargin, rightMargin, bottomMargin := pdf.GetMargins()
-	_, pageHeight := pdf.GetPageSize()
-	usablePageWidth := 210 - leftMargin - rightMargin
-	usablePageHeight := pageHeight - bottomMargin - topMargin
+	pageWidth, pageHeight := pdf.GetPageSize()
+
+	usablePageWidth := pageWidth - (leftMargin + rightMargin)
+	usablePageHeight := pageHeight - (bottomMargin + topMargin)
 
 	// Calculate cell widths based on number of fields
 	cellWidth := usablePageWidth / float64(len(fields)) // Total width is 190mm
-	const (
-		defaultHeightCell = 5
-		// lineHeightMultiplier = 0.7
-	)
 
+	// Table content
+	err := printTable(pdf, usablePageHeight, cellWidth,
+		val, fields, fieldIndices,
+		filename)
+
+	return err
+
+}
+
+func printTable(pdf *gofpdf.Fpdf, usablePageHeight float64, cellWidth float64,
+	val reflect.Value, fields []string, fieldIndices []int,
+	filename string) error {
 	// Function to print table header
 	printHeader := func() {
 		for _, field := range fields {
@@ -62,7 +75,6 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 	// Print table header initially
 	printHeader()
 
-	// Table content
 	for i := 0; i < val.Len(); i++ {
 		elem := val.Index(i)
 		heights := make([]float64, len(fields))
