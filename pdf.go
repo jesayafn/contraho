@@ -9,13 +9,19 @@ import (
 )
 
 const (
-	defaultHeightCell = 5
+	defaultHeightCell = 6
 )
 
 func generatePDF(filename string, data interface{}, fields ...string) error {
 	pdf := gofpdf.New("L", "mm", "A4", "")
+	// Adjust bottom margin
+	// newBottomMargin := 10.0
+	newBottomMargin := 25.4
+
+	pdf.SetMargins(25.4, 25.4, 25.4)
+	pdf.SetAutoPageBreak(true, newBottomMargin)
 	pdf.AddPage()
-	pdf.SetFont("Arial", "", 8)
+	pdf.SetFont("Arial", "", 11)
 
 	val := reflect.ValueOf(data)
 
@@ -42,12 +48,15 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 	}
 
 	// Calculate the usable page height
+	leftMargin, topMargin, rightMargin, _ := pdf.GetMargins()
+	// fmt.Println(bottomMargin, topMargin)
+	// fmt.Printf("Current Margins - Left: %f, Top: %f, Right: %f, Bottom: %f\n", leftMargin, topMargin, rightMargin, bottomMargin)
 
-	leftMargin, topMargin, rightMargin, bottomMargin := pdf.GetMargins()
 	pageWidth, pageHeight := pdf.GetPageSize()
 
 	usablePageWidth := pageWidth - (leftMargin + rightMargin)
-	usablePageHeight := pageHeight - (bottomMargin + topMargin)
+	usablePageHeight := pageHeight - (topMargin)
+	// fmt.Println(usablePageHeight, usablePageWidth, pageHeight, pageWidth)
 
 	// Calculate cell widths based on number of fields
 	cellWidth := usablePageWidth / float64(len(fields)) // Total width is 190mm
@@ -55,7 +64,7 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 	// Table content
 	err := printTable(pdf, usablePageHeight, cellWidth,
 		val, fields, fieldIndices,
-		filename)
+		filename, 25.4)
 
 	return err
 
@@ -63,11 +72,11 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 
 func printTable(pdf *gofpdf.Fpdf, usablePageHeight float64, cellWidth float64,
 	val reflect.Value, fields []string, fieldIndices []int,
-	filename string) error {
+	filename string, margin float64) error {
 	// Function to print table header
 	printHeader := func() {
 		for _, field := range fields {
-			pdf.CellFormat(cellWidth, defaultHeightCell, strings.ToUpper(field), "1", 0, "C", false, 0, "")
+			pdf.CellFormat(cellWidth, defaultHeightCell, strings.ToUpper(field), "TB", 0, "C", false, 0, "")
 		}
 		pdf.Ln(-1)
 	}
@@ -75,6 +84,7 @@ func printTable(pdf *gofpdf.Fpdf, usablePageHeight float64, cellWidth float64,
 	// Print table header initially
 	printHeader()
 
+	var previousY float64
 	for i := 0; i < val.Len(); i++ {
 		elem := val.Index(i)
 		heights := make([]float64, len(fields))
@@ -96,14 +106,28 @@ func printTable(pdf *gofpdf.Fpdf, usablePageHeight float64, cellWidth float64,
 		}
 
 		// Check if the row fits on the current page, otherwise add a new page
+
 		if pdf.GetY()+maxHeight > usablePageHeight {
 			pdf.AddPage()
+
+			currentPage := pdf.PageNo()
+
+			pdf.SetPage(currentPage - 1)
+			currentPage = pdf.PageNo()
+
+			pageWidth, _ := pdf.GetPageSize()
+			pdf.Line(margin, previousY,
+				pageWidth-margin, previousY)
+
+			pdf.SetPage(currentPage + 1)
+
 			// Print table header again on new page
 			printHeader()
 		}
 
 		y := pdf.GetY()
 
+		// fmt.Println(pdf.GetY()+maxHeight, usablePageHeight)
 		// Print each cell
 		for _, fieldIndex := range fieldIndices {
 			fieldValue := elem.Field(fieldIndex)
@@ -115,21 +139,31 @@ func printTable(pdf *gofpdf.Fpdf, usablePageHeight float64, cellWidth float64,
 
 			// Add padding to the cell
 			padding := 1.0
-			pdf.Rect(x, y, cellWidth, maxHeight, "D")
 
+			// Calculate the Y position of the next row
+			// nextRowY := y + maxHeight
+
+			// Draw bottom edge of rectangle for the last row or if it will exceed the page height
+			isLastRow := (i == val.Len()-1)
+			// exceedsPage := (pdf.GetY()+maxHeight > usablePageHeight-5)
+
+			// if isLastRow || exceedsPage {
+			if isLastRow {
+				pdf.Line(x, y+maxHeight, x+cellWidth, y+maxHeight)
+			}
 			// Calculate the position for text to ensure padding
 			textX := x + padding
 			textY := y + padding
 
 			// Print the text with proper alignment
 			pdf.SetXY(textX, textY)
-			pdf.MultiCell(cellWidth, defaultHeightCell, text, "0", "LT", false)
-			pdf.SetXY(x+cellWidth, y)
+			pdf.MultiCell(cellWidth, defaultHeightCell, text, "", "LT", false)
+			// pdf.SetXY(x+cellWidth, y)
 
 			// Move to the next cell position
 			pdf.SetXY(x+cellWidth, y)
 		}
-
+		previousY = y + maxHeight
 		pdf.Ln(maxHeight)
 	}
 
