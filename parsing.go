@@ -59,17 +59,20 @@ func arguments(subcommand int) (host *string,
 
 		handleErr(err)
 		appArray := strings.Split(*app, ",")
-		// fmt.Println(appArray)
-		var notFounded []string
-		for index := range appArray {
-			_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
-			if checkStatusCode == 404 {
-				notFounded = append(notFounded, appArray[index])
+
+		if *app != "" {
+			var notFound []string
+			for index := range appArray {
+				_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
+				if checkStatusCode == 404 {
+					notFound = append(notFound, appArray[index])
+				}
 			}
-		}
-		if len(notFounded) >= 1 {
-			fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFounded, ", "))
-			os.Exit(1)
+
+			if len(notFound) >= 1 {
+				fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFound, ", "))
+				os.Exit(1)
+			}
 		}
 
 		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
