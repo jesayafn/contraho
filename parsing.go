@@ -36,9 +36,6 @@ func arguments(subcommand int) (host *string,
 		flagSet.Parse(os.Args[2:])
 
 		if *fileOutput != "" || *pagingOutput {
-			fmt.Println()
-			os.Exit(1)
-
 			exitWithErrorMessage(
 				"Error: --filename and --paging cannot be used simultaneously.",
 				1)
