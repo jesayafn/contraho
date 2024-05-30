@@ -35,7 +35,7 @@ func arguments(subcommand int) (host *string,
 		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
 
-		if *fileOutput != "" || *pagingOutput {
+		if *fileOutput != "" && *pagingOutput {
 			exitWithErrorMessage(
 				"Error: --filename and --paging cannot be used simultaneously.",
 				1)
