@@ -9,10 +9,9 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 )
 
-func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, selectedColumns ...string) {
+func printStructTable(data interface{}, pagingOutput bool, selectedColumns ...string) {
 	slice := reflect.ValueOf(data)
 
 	if err := validateInput(slice); err != nil {
@@ -47,10 +46,10 @@ func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, 
 				// Print the header and data to the pager
 				printHeader(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
 				printValues(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
-				endTime := time.Now()
-				elapsedTime := endTime.Sub(startTime).Seconds()
+				// endTime := time.Now()
+				// elapsedTime := endTime.Sub(startTime).Seconds()
 
-				fmt.Fprintf(pagerIn.(io.Writer), "Execution Time: %.3f seconds\n", elapsedTime)
+				// fmt.Fprintf(pagerIn.(io.Writer), "Execution Time: %.3f seconds\n", elapsedTime)
 
 				pagerIn.Close()
 				pagerCmd.Wait()
@@ -63,10 +62,10 @@ func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, 
 	// Fallback to standard output if pager is not available
 	printHeader(slice, columnWidths, selectedColumns, os.Stdout)
 	printValues(slice, columnWidths, selectedColumns, os.Stdout)
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
+	// endTime := time.Now()
+	// elapsedTime := endTime.Sub(startTime).Seconds()
 
-	fmt.Fprintf(os.Stdout, "Execution Time: %.3f seconds\n", elapsedTime)
+	// fmt.Fprintf(os.Stdout, "Execution Time: %.3f seconds\n", elapsedTime)
 
 }
 

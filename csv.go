@@ -6,10 +6,9 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"time"
 )
 
-func createCSVFile(csvOutput string, startTime time.Time, data interface{}) {
+func createCSVFile(csvOutput string, data interface{}) {
 	// Open the CSV file
 	file, err := os.Create(csvOutput)
 	if err != nil {
@@ -42,10 +41,6 @@ func createCSVFile(csvOutput string, startTime time.Time, data interface{}) {
 	}
 
 	fmt.Println("CSV file generated successfully!")
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
-
-	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 
 }
 

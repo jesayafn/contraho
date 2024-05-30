@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 )
 
 const (
@@ -11,6 +10,7 @@ const (
 )
 
 func main() {
+	// startTime := time.Now()
 	if len(os.Args) < 2 {
 		fmt.Println("Usage: contraho <subcommand> [options]")
 		os.Exit(1)
@@ -27,10 +27,14 @@ func main() {
 		fmt.Println("Invalid subcommand:", subcommand)
 		os.Exit(1)
 	}
+
+	// endTime := time.Now()
+	// elapsedTime := endTime.Sub(startTime).Seconds()
+
+	// fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
 }
 
 func projectSearch() {
-	startTime := time.Now()
 
 	host, credential, authMode, csvOutput, pdfOutput, pagingOutput, otherOptions := arguments(0)
 
@@ -48,11 +52,14 @@ func projectSearch() {
 		projectList = project(*host, credential, authMode, lengthProjectPage, -1, emptyString)
 	}
 	if *csvOutput != "" {
-		createCSVFile(*csvOutput, startTime, projectList)
-	} else if *pdfOutput != "" {
+		createCSVFile(*csvOutput, projectList)
+	}
+	if *pdfOutput != "" {
 		generatePDF(*pdfOutput, projectList, "Key", "Name", "Branch", "Loc", "Owner")
-	} else {
-		printStructTable(projectList, startTime, *pagingOutput, "Key", "Name", "Branch", "Loc", "Owner")
+	}
+
+	if *pdfOutput == "" && *csvOutput == "" {
+		printStructTable(projectList, *pagingOutput, "Key", "Name", "Branch", "Loc", "Owner")
 
 		// printStructAsTable(projectList, []string{"Key", "Name", "Branch", "Loc", "Owner"})
 	}
@@ -101,7 +108,6 @@ func project(host string, credential string, authMode int, lengthProjectPage int
 }
 
 func appSearch() {
-	startTime := time.Now()
 
 	host, credential, authMode, csvOutput, pdfOutput, pagingOutput, _ := arguments(1)
 
@@ -122,12 +128,14 @@ func appSearch() {
 	appList = metricProject(appList, *host, credential, authMode).([]AppList)
 
 	if *csvOutput != "" {
-		createCSVFile(*csvOutput, startTime, appList)
-	} else if *pdfOutput != "" {
+		createCSVFile(*csvOutput, appList)
+	}
+	if *pdfOutput != "" {
 		err := generatePDF(*pdfOutput, appList,
 			"Key", "Name", "Loc", "Email", "Owner")
 		handleErr(err)
-	} else {
-		printStructTable(appList, startTime, *pagingOutput, "Key", "Name", "Loc")
+	}
+	if *pdfOutput == "" && *csvOutput == "" {
+		printStructTable(appList, *pagingOutput, "Key", "Name", "Loc")
 	}
 }
