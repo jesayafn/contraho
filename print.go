@@ -3,10 +3,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
 	"reflect"
+	"runtime"
+	"strings"
+	"time"
 )
 
-func printStructTable(data interface{}, selectedColumns ...string) {
+func printStructTable(data interface{}, startTime time.Time, pagingOutput bool, selectedColumns ...string) {
 	slice := reflect.ValueOf(data)
 
 	if err := validateInput(slice); err != nil {
@@ -17,8 +23,51 @@ func printStructTable(data interface{}, selectedColumns ...string) {
 	columnWidths := calculateColumnWidths(slice, selectedColumns)
 	// fmt.Println(columnWidths)
 
-	printHeader(slice, columnWidths, selectedColumns)
-	printValues(slice, columnWidths, selectedColumns)
+	// printHeader(slice, columnWidths, selectedColumns)
+	// printValues(slice, columnWidths, selectedColumns)
+	var pagerCmd *exec.Cmd
+
+	if pagingOutput {
+		switch runtime.GOOS {
+		// case "windows":
+		// 	pagerCmd = exec.Command("more")
+		case "darwin", "linux":
+			pagerCmd = exec.Command("less")
+		default:
+			pagerCmd = nil
+		}
+	}
+
+	if pagerCmd != nil {
+		pagerIn, err := pagerCmd.StdinPipe()
+		if err == nil {
+			pagerCmd.Stdout = os.Stdout
+			pagerCmd.Stderr = os.Stderr
+			if err := pagerCmd.Start(); err == nil {
+				// Print the header and data to the pager
+				printHeader(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
+				printValues(slice, columnWidths, selectedColumns, pagerIn.(io.Writer))
+				endTime := time.Now()
+				elapsedTime := endTime.Sub(startTime).Seconds()
+
+				fmt.Fprintf(pagerIn.(io.Writer), "Execution Time: %.3f seconds\n", elapsedTime)
+
+				pagerIn.Close()
+				pagerCmd.Wait()
+
+				return
+			}
+		}
+	}
+
+	// Fallback to standard output if pager is not available
+	printHeader(slice, columnWidths, selectedColumns, os.Stdout)
+	printValues(slice, columnWidths, selectedColumns, os.Stdout)
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Fprintf(os.Stdout, "Execution Time: %.3f seconds\n", elapsedTime)
+
 }
 
 func validateInput(slice reflect.Value) error {
@@ -56,26 +105,28 @@ func updateColumnWidths(slice reflect.Value, fieldIndex int, columnWidths []int)
 	}
 }
 
-func printHeader(slice reflect.Value, columnWidths []int, selectedColumns []string) {
+func printHeader(slice reflect.Value, columnWidths []int, selectedColumns []string, writer io.Writer) {
 	for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
 		fieldName := slice.Index(0).Type().Field(fieldIndex).Name
 		if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
-			fmt.Printf("%-*s", columnWidths[fieldIndex]+2, fieldName)
+			// fmt.Printf("%-*s", columnWidths[fieldIndex]+2, strings.ToUpper(fieldName))
+			capitalizedFieldName := strings.ToUpper(fieldName)
+			fmt.Fprintf(writer, "%-*s", columnWidths[fieldIndex]+2, capitalizedFieldName)
 		}
 	}
-	fmt.Println()
+	fmt.Fprintln(writer)
 }
 
-func printValues(slice reflect.Value, columnWidths []int, selectedColumns []string) {
+func printValues(slice reflect.Value, columnWidths []int, selectedColumns []string, writer io.Writer) {
 	for rowIndex := 0; rowIndex < slice.Len(); rowIndex++ {
 		for fieldIndex := 0; fieldIndex < slice.Index(0).Type().NumField(); fieldIndex++ {
 			fieldName := slice.Index(0).Type().Field(fieldIndex).Name
 			if len(selectedColumns) == 0 || contains(selectedColumns, fieldName) {
 				cellValue := fmt.Sprintf("%v", slice.Index(rowIndex).Field(fieldIndex).Interface())
-				fmt.Printf("%-*s", columnWidths[fieldIndex]+2, cellValue)
+				fmt.Fprintf(writer, "%-*s", columnWidths[fieldIndex]+2, cellValue)
 			}
 		}
-		fmt.Println()
+		fmt.Fprintln(writer)
 	}
 }
 

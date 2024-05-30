@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func arguments(subcommand int) (host *string,
-	credential string, authMode int, fileOutput *string,
+	credential string, authMode int,
+	fileOutput *string, pagingOutput *bool,
 	additionalOptions map[string]interface{}) {
 	flagSet := flag.NewFlagSet("project", flag.ExitOnError)
 	host = flagSet.String("host", "localhost", "Host of Sonarqube server. It is can be FQDN, or IP address")
@@ -21,7 +24,7 @@ func arguments(subcommand int) (host *string,
 	password := flagSet.String("password", "", "Password will be used for authentication to Sonarqube server")
 	token := flagSet.String("token", "", "Token will be used for authentication to Sonarqube server")
 	fileOutput = flagSet.String("filename", "", "CSV filename will be used for CSV output file")
-
+	pagingOutput = flagSet.Bool("paging", false, "Pagination output using pager (only available on Linux and macOS)")
 	additionalOptions = make(map[string]interface{})
 
 	switch subcommand {
@@ -31,6 +34,17 @@ func arguments(subcommand int) (host *string,
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
 		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
+
+		if *fileOutput != "" && *pagingOutput {
+			exitWithErrorMessage(
+				"Error: --filename and --paging cannot be used simultaneously.",
+				1)
+		}
+		if *pagingOutput && runtime.GOOS == "windows" {
+			exitWithErrorMessage(
+				"Error: --paging is not supported on Windows",
+				1)
+		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
 		} else {
@@ -51,28 +65,33 @@ func arguments(subcommand int) (host *string,
 		err := dataParse(raw, &sonarqubeInfo)
 
 		handleErr(err)
-		appArray := strings.Split(*app, ",")
-		// fmt.Println(appArray)
-		var notFounded []string
-		for index := range appArray {
-			_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
-			if checkStatusCode == 404 {
-				notFounded = append(notFounded, appArray[index])
-			}
-		}
-		if len(notFounded) >= 1 {
-			fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFounded, ", "))
-			os.Exit(1)
+
+		if (*unlistedApp || *listedApp || *app != "") && sonarqubeInfo.Edition == "community" {
+			exitWithErrorMessage(
+				"Error: --unlisted-on-app, --app, and --listed-on-app cannot be used on Sonarqube Community Edition.",
+				1)
 		}
 
-		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
-			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
-			os.Exit(1)
+		if *app != "" {
+			appArray := strings.Split(*app, ",")
+			var notFound []string
+			for index := range appArray {
+				_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
+				if checkStatusCode == 404 {
+					notFound = append(notFound, appArray[index])
+				}
+			}
+
+			if len(notFound) >= 1 {
+				fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFound, ", "))
+				os.Exit(1)
+			}
 		}
 
 		if *unlistedApp && *listedApp {
-			fmt.Println("Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.")
-			os.Exit(1)
+			exitWithErrorMessage(
+				"Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.",
+				1)
 		}
 
 		additionalOptions["unlistedApp"] = *unlistedApp
@@ -81,6 +100,9 @@ func arguments(subcommand int) (host *string,
 		// fmt.Println(*unlistedApp)
 	case 1:
 		flagSet.Parse(os.Args[2:])
+		if *pagingOutput && runtime.GOOS == "windows" {
+			exitWithErrorMessage("Error: --paging is not supported on Windows", 1)
+		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
 		} else {
@@ -102,18 +124,23 @@ func arguments(subcommand int) (host *string,
 
 		handleErr(err)
 		if sonarqubeInfo.Edition == "community" {
-			fmt.Println("Error: Unavailable on Sonarqube Community. ")
-			os.Exit(1)
+			exitWithErrorMessage(
+				"Error: Unavailable on Sonarqube Community. ", 1)
 		}
 	default:
-		fmt.Println("tesuto")
+		fmt.Println("Binggo")
 	}
 
-	return host, credential, authMode, fileOutput, additionalOptions
+	return host, credential, authMode, fileOutput, pagingOutput, additionalOptions
 
 }
 
-func createCSVFile(fileOutput string, data interface{}) {
+func exitWithErrorMessage(message string, errCode int) {
+	fmt.Println(message)
+	os.Exit(errCode)
+}
+
+func createCSVFile(fileOutput string, startTime time.Time, data interface{}) {
 	// Open the CSV file
 	file, err := os.Create(fileOutput)
 	if err != nil {
@@ -146,6 +173,11 @@ func createCSVFile(fileOutput string, data interface{}) {
 	}
 
 	fmt.Println("CSV file generated successfully!")
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+
 }
 
 func authorizationHeader(username string, password string) string {
