@@ -31,9 +31,16 @@ func arguments(subcommand int) (host *string,
 		listedApp := flagSet.Bool("listed-on-app", false, "List only listed projects on any application")
 		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
+
+		if *fileOutput != "" && *pagingOutput {
+			exitWithErrorMessage(
+				"Error: --filename and --paging cannot be used simultaneously.",
+				1)
+		}
 		if *pagingOutput && runtime.GOOS == "windows" {
-			fmt.Println("Error: --paging is not supported on Windows")
-			os.Exit(1)
+			exitWithErrorMessage(
+				"Error: --paging is not supported on Windows",
+				1)
 		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
@@ -55,28 +62,33 @@ func arguments(subcommand int) (host *string,
 		err := dataParse(raw, &sonarqubeInfo)
 
 		handleErr(err)
-		appArray := strings.Split(*app, ",")
-		// fmt.Println(appArray)
-		var notFounded []string
-		for index := range appArray {
-			_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
-			if checkStatusCode == 404 {
-				notFounded = append(notFounded, appArray[index])
-			}
-		}
-		if len(notFounded) >= 1 {
-			fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFounded, ", "))
-			os.Exit(1)
+
+		if (*unlistedApp || *listedApp || *app != "") && sonarqubeInfo.Edition == "community" {
+			exitWithErrorMessage(
+				"Error: --unlisted-on-app, --app, and --listed-on-app cannot be used on Sonarqube Community Edition.",
+				1)
 		}
 
-		if (*unlistedApp || *listedApp) && sonarqubeInfo.Edition == "community" {
-			fmt.Println("Error: --unlisted-on-app or --listed-on-app cannot be used on Sonarqube Community Edition.")
-			os.Exit(1)
+		if *app != "" {
+			appArray := strings.Split(*app, ",")
+			var notFound []string
+			for index := range appArray {
+				_, checkStatusCode := applicationsShowApi(*host, appArray[index], "", credential, authMode)
+				if checkStatusCode == 404 {
+					notFound = append(notFound, appArray[index])
+				}
+			}
+
+			if len(notFound) >= 1 {
+				fmt.Printf("Application not found: %v\nPlease check the requested application key(s). \n", strings.Join(notFound, ", "))
+				os.Exit(1)
+			}
 		}
 
 		if *unlistedApp && *listedApp {
-			fmt.Println("Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.")
-			os.Exit(1)
+			exitWithErrorMessage(
+				"Error: --unlisted-on-app and --listed-on-app cannot be used simultaneously.",
+				1)
 		}
 
 		additionalOptions["unlistedApp"] = *unlistedApp
@@ -86,8 +98,7 @@ func arguments(subcommand int) (host *string,
 	case 1:
 		flagSet.Parse(os.Args[2:])
 		if *pagingOutput && runtime.GOOS == "windows" {
-			fmt.Println("Error: --paging is not supported on Windows")
-			os.Exit(1)
+			exitWithErrorMessage("Error: --paging is not supported on Windows", 1)
 		}
 		if *username != "" && *password != "" && *token == "" {
 			authMode = 1
@@ -110,14 +121,60 @@ func arguments(subcommand int) (host *string,
 
 		handleErr(err)
 		if sonarqubeInfo.Edition == "community" {
-			fmt.Println("Error: Unavailable on Sonarqube Community. ")
-			os.Exit(1)
+			exitWithErrorMessage(
+				"Error: Unavailable on Sonarqube Community. ", 1)
 		}
 	default:
-		fmt.Println("tesuto")
+		fmt.Println("Binggo")
 	}
 
 	return host, credential, authMode, csvOutput, pdfOutput, pagingOutput, additionalOptions
+
+}
+
+func exitWithErrorMessage(message string, errCode int) {
+	fmt.Println(message)
+	os.Exit(errCode)
+}
+
+func createCSVFile(fileOutput string, startTime time.Time, data interface{}) {
+	// Open the CSV file
+	file, err := os.Create(fileOutput)
+	if err != nil {
+		fmt.Println("Error creating CSV file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Create a CSV writer
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Use reflection to get field names and values
+	val := reflect.ValueOf(data)
+	if val.Kind() != reflect.Slice {
+		fmt.Println("Input data is not a slice")
+		return
+	}
+
+	// Write the CSV header (field names)
+	if val.Len() > 0 {
+		header := getStructFieldNames(val.Index(0).Interface())
+		writer.Write(header)
+	}
+
+	// Write the data rows
+	for i := 0; i < val.Len(); i++ {
+		row := getStructFieldValues(val.Index(i).Interface())
+		writer.Write(row)
+	}
+
+	fmt.Println("CSV file generated successfully!")
+	endTime := time.Now()
+	elapsedTime := endTime.Sub(startTime).Seconds()
+
+	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
+
 
 }
 
