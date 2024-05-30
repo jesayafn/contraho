@@ -32,9 +32,9 @@ func arguments(subcommand int) (host *string,
 		app := flagSet.String("app", "", "List only listed on the specified application")
 		flagSet.Parse(os.Args[2:])
 
-		if *fileOutput != "" && *pagingOutput {
+		if (*csvOutput != "" || *pdfOutput != "") && *pagingOutput {
 			exitWithErrorMessage(
-				"Error: --filename and --paging cannot be used simultaneously.",
+				"Error: --filename-csv or --filename-pdf cannot be used simultaneously with --paging. ",
 				1)
 		}
 		if *pagingOutput && runtime.GOOS == "windows" {
@@ -135,47 +135,6 @@ func arguments(subcommand int) (host *string,
 func exitWithErrorMessage(message string, errCode int) {
 	fmt.Println(message)
 	os.Exit(errCode)
-}
-
-func createCSVFile(fileOutput string, startTime time.Time, data interface{}) {
-	// Open the CSV file
-	file, err := os.Create(fileOutput)
-	if err != nil {
-		fmt.Println("Error creating CSV file:", err)
-		return
-	}
-	defer file.Close()
-
-	// Create a CSV writer
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// Use reflection to get field names and values
-	val := reflect.ValueOf(data)
-	if val.Kind() != reflect.Slice {
-		fmt.Println("Input data is not a slice")
-		return
-	}
-
-	// Write the CSV header (field names)
-	if val.Len() > 0 {
-		header := getStructFieldNames(val.Index(0).Interface())
-		writer.Write(header)
-	}
-
-	// Write the data rows
-	for i := 0; i < val.Len(); i++ {
-		row := getStructFieldValues(val.Index(i).Interface())
-		writer.Write(row)
-	}
-
-	fmt.Println("CSV file generated successfully!")
-	endTime := time.Now()
-	elapsedTime := endTime.Sub(startTime).Seconds()
-
-	fmt.Printf("Execution Time: %.3f seconds\n", elapsedTime)
-
-
 }
 
 func authorizationHeader(username string, password string) string {
