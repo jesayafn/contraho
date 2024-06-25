@@ -6,6 +6,7 @@ on:
     - "*"
 
 jobs:
+
   build:
     name: "Build binary"
     runs-on: "ubuntu-latest"
@@ -13,7 +14,7 @@ jobs:
     - name: Source Code Checkout
       uses: actions/checkout@v4
     - run: |
-        TAG=${{ github.event.release.tag_name }}
+        TAG=$GITHUB_REF_NAME
         echo "VERSION=${TAG#v}" >> $GITHUB_ENV
     - uses: actions/setup-go@v5
       with:
@@ -21,13 +22,39 @@ jobs:
     - name: Build for linux/amd64
       run: |
         mkdir ./bin
-        GOOS=linux GOARCH=amd64 go build -o ./bin/contraho-${VERSION}-amd64
-        tar -czvf contraho-${VERSION}-amd64.tar.gz ./bin/contraho-${VERSION}-amd64 
+        GOOS=linux GOARCH=amd64 go build -o ./bin/contraho-${VERSION}.linux-amd64
+        echo ${VERSION}
+    - uses: actions/upload-artifact@master
+      with:
+        name: contraho-${{ env.VERSION }}
+        path: | 
+          ./bin/contraho*
+          CHANGELOG.md
+    - id: export-variables 
+      run: echo VERSION=${VERSION} >> $GITHUB_OUTPUT
+    outputs: 
+      VERSION: ${{ steps.export-variables.outputs.VERSION }}
+  release:
+    name: "Make release"
+    runs-on: "ubuntu-latest"
+    needs:
+    - build
+    env: 
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+    - uses: actions/download-artifact@master
+      with:
+        name: contraho-${{ env.VERSION }}
+        path: ${{ github.workspace }}/release
+    - name: Archive binary file
+      run: |
+        tar -czvf contraho-${VERSION}.linux-amd64.tar.gz ${{ github.workspace }}/release/bin/contraho-${VERSION}.linux-amd64
     - name: Release
       uses: softprops/action-gh-release@v2
       with: 
-        body_path: ${{ github.workspace }}-CHANGELOG.md
-        make_latest: false
-        prerelease: true
+        token: ${{ secrets.GHA_RELEASE_ACCESS }}
+        body_path: ${{ github.workspace }}/release/CHANGELOG.md
+        make_latest: true
+        prerelease: false
         files: |
-          /bin/contraho*.tar.gz
+          ${{ github.workspace }}/contraho*.tar.gz
