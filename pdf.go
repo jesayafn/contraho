@@ -65,6 +65,7 @@ func generatePDF(filename string, data interface{}, fields ...string) error {
 	err := printTable(pdf, usablePageHeight, cellWidth,
 		val, fields, fieldIndices,
 		filename, 25.4)
+	fmt.Println("PDF file generated successfully!")
 
 	return err
 
