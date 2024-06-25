@@ -1,0 +1,33 @@
+name: "CI/CD pipeline for Contraho"
+
+on:
+  push:
+    tags: 
+    - "*"
+
+jobs:
+  build:
+    name: "Build binary"
+    runs-on: "ubuntu-latest"
+    steps:
+    - name: Source Code Checkout
+      uses: actions/checkout@v4
+    - run: |
+        TAG=${{ github.event.release.tag_name }}
+        echo "VERSION=${TAG#v}" >> $GITHUB_ENV
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.20.11"
+    - name: Build for linux/amd64
+      run: |
+        mkdir ./bin
+        GOOS=linux GOARCH=amd64 go build -o ./bin/contraho-${VERSION}-amd64
+        tar -czvf contraho-${VERSION}-amd64.tar.gz ./bin/contraho-${VERSION}-amd64 
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with: 
+        body_path: ${{ github.workspace }}-CHANGELOG.md
+        make_latest: false
+        prerelease: true
+        files: |
+          /bin/contraho*.tar.gz
